@@ -861,7 +861,27 @@ class ReeferMadness:
         
         # Apply enhanced scrolling to text widgets when they're created
         self.enhanced_scroll_widgets = []
+        
+        # Configure global Toplevel window styling
+        self.configure_toplevel_ocean_theme()
+        
         print("🌊 Enhanced scroll behavior configured")
+
+    def configure_toplevel_ocean_theme(self):
+        """Configure ocean theme for all Toplevel windows and dialogs"""
+        # Configure default Toplevel window styling
+        self.root.option_add('*Dialog.background', self.colors['seafoam_blue'])
+        self.root.option_add('*Dialog.foreground', self.colors['deep_navy'])
+        self.root.option_add('*Toplevel.background', self.colors['seafoam_blue'])
+        
+        # Configure messagebox styling (if possible)
+        try:
+            # This may not work on all systems, but worth trying
+            self.root.tk.call('tk', 'messageBox', '-parent', self.root, '-background', self.colors['seafoam_blue'])
+        except:
+            pass  # Ignore if not supported
+        
+        print("🌊 Toplevel ocean theme configured")
 
     def apply_enhanced_scroll_to_text_widget(self, text_widget):
         """Apply enhanced scroll behavior to text widgets to prevent jarring simultaneous scrolling"""
@@ -1114,12 +1134,14 @@ class ReeferMadness:
         self.selected_brand.set(brands[0])
         self.custom_label.config(text=self.param_config[param]["custom_unit"])
         
+        # Always update target value for all parameters (including Alkalinity)
+        self.target_value.set(str(self.param_config[param]["target"]))
+        
         # Show alkalinity unit selector only for alkalinity
         if param == "Alkalinity":
             self.alk_unit_frame.pack(side="left")
         else:
             self.alk_unit_frame.pack_forget()
-            self.target_value.set(str(self.param_config[param]["target"]))
 
     def sync_maintenance_ui(self, *args):
         """Synchronize Maintenance UI when parameter changes"""
@@ -1154,35 +1176,42 @@ class ReeferMadness:
         """Build the Action Plan tab with wave-style headers and floating appearance"""
         frame = self.tabs["Action Plan"]
         
-        # System Configuration with clean header (no icon)
-        config_frame = self.create_wave_header_frame(frame, "System Configuration")
+        # Unified Dosing Parameters & Safety Calculator section
+        unified_frame = self.create_wave_header_frame(frame, "Dosing Parameters & Safety Calculator")
         
-        tk.Label(config_frame, text="Tank Volume:", font=('Arial', 9, 'bold'), 
+        # Tank Configuration Row
+        tank_row = ttk.Frame(unified_frame)
+        tank_row.configure(style='Ocean.TFrame')
+        tank_row.pack(fill="x", pady=5)
+        
+        tk.Label(tank_row, text="Tank Volume:", font=('Arial', 9, 'bold'), 
                 bg=self.colors['seafoam_blue'], fg=self.colors['deep_ocean_blue']).pack(side="left")
-        volume_entry = tk.Entry(config_frame, textvariable=self.tank_volume, width=8,
+        volume_entry = tk.Entry(tank_row, textvariable=self.tank_volume, width=8,
                                bg=self.colors['cloud_white'], fg=self.colors['deep_ocean_blue'])
         volume_entry.pack(side="left", padx=5)
         
-        ttk.Radiobutton(config_frame, text="Gallons", variable=self.volume_unit, value="Gallons").pack(side="left", padx=5)
-        ttk.Radiobutton(config_frame, text="Liters", variable=self.volume_unit, value="Liters").pack(side="left")
+        ttk.Radiobutton(tank_row, text="Gallons", variable=self.volume_unit, value="Gallons").pack(side="left", padx=5)
+        ttk.Radiobutton(tank_row, text="Liters", variable=self.volume_unit, value="Liters").pack(side="left")
 
-        # Product Selection with clean header (no icon)
-        product_frame = self.create_wave_header_frame(frame, "Product Selection")
+        # Product Selection Row
+        product_row = ttk.Frame(unified_frame)
+        product_row.configure(style='Ocean.TFrame')
+        product_row.pack(fill="x", pady=8)
         
-        tk.Label(product_frame, text="Parameter:", font=('Arial', 9, 'bold'),
+        tk.Label(product_row, text="Parameter:", font=('Arial', 9, 'bold'),
                 bg=self.colors['seafoam_blue'], fg=self.colors['deep_ocean_blue']).pack(side="left")
-        param_combo = ttk.Combobox(product_frame, textvariable=self.selected_parameter, 
+        param_combo = ttk.Combobox(product_row, textvariable=self.selected_parameter, 
                                   values=list(self.param_config.keys()), state="readonly", width=12)
         param_combo.pack(side="left", padx=5)
         
-        tk.Label(product_frame, text="Brand:", font=('Arial', 9, 'bold'),
+        tk.Label(product_row, text="Brand:", font=('Arial', 9, 'bold'),
                 bg=self.colors['seafoam_blue'], fg=self.colors['deep_ocean_blue']).pack(side="left", padx=(20,5))
-        self.brand_combo = ttk.Combobox(product_frame, textvariable=self.selected_brand, 
+        self.brand_combo = ttk.Combobox(product_row, textvariable=self.selected_brand, 
                                        state="readonly", width=15)
         self.brand_combo.pack(side="left", padx=5)
         
         # Custom concentration frame (shown when Custom brand selected)
-        self.custom_frame = ttk.Frame(product_frame)
+        self.custom_frame = ttk.Frame(product_row)
         self.custom_frame.configure(style='Ocean.TFrame')
         tk.Label(self.custom_frame, text="Concentration:", font=('Arial', 9, 'bold'),
                 bg=self.colors['seafoam_blue'], fg=self.colors['deep_ocean_blue']).pack(side="left", padx=(10,5))
@@ -1193,13 +1222,10 @@ class ReeferMadness:
                                     bg=self.colors['seafoam_blue'], fg=self.colors['deep_ocean_blue'])
         self.custom_label.pack(side="left", padx=(5,0))
 
-        # Safety Calculator with clean header (no icon)
-        calc_frame = self.create_wave_header_frame(frame, "Safety Calculator")
-        
-        # Row 1: Current and Target Values
-        calc_row1 = ttk.Frame(calc_frame)
+        # Safety Calculator Values Row
+        calc_row1 = ttk.Frame(unified_frame)
         calc_row1.configure(style='Ocean.TFrame')
-        calc_row1.pack(fill="x", pady=5)
+        calc_row1.pack(fill="x", pady=8)
         
         tk.Label(calc_row1, text="Current Value:", font=('Arial', 9, 'bold'),
                 bg=self.colors['seafoam_blue'], fg=self.colors['deep_ocean_blue']).pack(side="left")
@@ -1213,14 +1239,8 @@ class ReeferMadness:
                                bg=self.colors['cloud_white'], fg=self.colors['deep_ocean_blue'])
         target_entry.pack(side="left", padx=5)
         
-        tk.Label(calc_row1, text="pH (optional):", font=('Arial', 9, 'bold'),
-                bg=self.colors['seafoam_blue'], fg=self.colors['deep_ocean_blue']).pack(side="left", padx=(20,5))
-        ph_entry = tk.Entry(calc_row1, textvariable=self.ph_value, width=8,
-                           bg=self.colors['cloud_white'], fg=self.colors['deep_ocean_blue'])
-        ph_entry.pack(side="left", padx=5)
-        
-        # Row 2: Alkalinity units (only shown for alkalinity parameter)
-        calc_row2 = ttk.Frame(calc_frame)
+        # Alkalinity Units Row (only shown for alkalinity parameter)
+        calc_row2 = ttk.Frame(unified_frame)
         calc_row2.configure(style='Ocean.TFrame')
         calc_row2.pack(fill="x", pady=5)
         
@@ -1245,7 +1265,7 @@ class ReeferMadness:
         result_frame.pack(fill="both", expand=True, padx=25, pady=(0,10))
         
         self.result_text = tk.Text(result_frame, height=8, wrap=tk.WORD, font=("Arial", 10),
-                                  bg=self.colors['cloud_white'], fg=self.colors['deep_ocean_blue'],
+                                  bg=self.colors['seafoam_blue'], fg=self.colors['deep_ocean_blue'],  # Match app background
                                   relief='flat', borderwidth=1, 
                                   highlightbackground=self.colors['ocean_blue'])
         result_scrollbar = ttk.Scrollbar(result_frame, orient="vertical", command=self.result_text.yview)
@@ -1257,8 +1277,8 @@ class ReeferMadness:
         self.result_text.pack(side="left", fill="both", expand=True)
         result_scrollbar.pack(side="right", fill="y")
         
-        # Initial message with ocean theme
-        self.result_text.insert("1.0", "🌊 Enter values above and click 'Generate Safety Plan' to see dosing recommendations with ocean-grade precision.")
+        # Initial message with ocean theme and transparency note
+        self.result_text.insert("1.0", "🌊 Enter values above and click 'Generate Safety Plan' to see dosing recommendations with detailed mathematical formulas available.")
         self.result_text.config(state="disabled")  # Make read-only
         
         # Tab Explanation Section - MOVED TO BOTTOM (clean header, no icon)
@@ -1330,6 +1350,15 @@ class ReeferMadness:
         tk.Label(values_row, text="Days:", width=8, anchor="w").pack(side="left", padx=(20,5))
         tk.Entry(values_row, textvariable=self.cons_days, width=6).pack(side="left", padx=5)
 
+        # Row 4.5: Current Daily Dose field for existing dosing integration
+        dose_row = ttk.Frame(cons_frame)
+        dose_row.pack(fill="x", pady=5)
+        
+        tk.Label(dose_row, text="Current Daily Dose:", width=15, anchor="w").pack(side="left")
+        self.current_daily_dose = tk.StringVar(value="0")  # Default to 0
+        tk.Entry(dose_row, textvariable=self.current_daily_dose, width=10).pack(side="left", padx=5)
+        tk.Label(dose_row, text="mL (0 if not currently dosing)", width=25, anchor="w", font=('Arial', 8)).pack(side="left", padx=5)
+
         # Row 5: Alkalinity units (shown only for alkalinity) and Calculate button
         calc_row = ttk.Frame(cons_frame)
         calc_row.pack(fill="x", pady=10)
@@ -1343,6 +1372,22 @@ class ReeferMadness:
         # Calculate button positioned closer to units (not far right) - ocean styling
         self.create_ocean_button(calc_row, "CALCULATE CONSUMPTION RATE", 
                                  self.calculate_consumption_rate).pack(side="left", padx=20)
+
+        # Inline Calculation Results section for transparency (moved below calculator)
+        self.consumption_results_frame = self.create_wave_header_frame(frame, "Calculation Results", 15)
+        
+        # Results display area with permanently visible math transparency and enhanced scroll
+        self.consumption_results_text = tk.Text(self.consumption_results_frame, height=12, wrap=tk.WORD, 
+                                               font=("Arial", 9), bg=self.colors['seafoam_blue'],  # Match app background 
+                                               fg=self.colors['deep_ocean_blue'], relief='flat', 
+                                               borderwidth=1, highlightbackground=self.colors['ocean_blue'])
+        self.consumption_results_text.pack(fill="both", expand=True, padx=5, pady=5)
+        
+        # Apply enhanced scroll behavior to consumption results text
+        self.apply_enhanced_scroll_to_text_widget(self.consumption_results_text)
+        
+        # Initially hide results frame until calculation is performed
+        self.consumption_results_frame.pack_forget()
 
         # Daily Logging Section (unchanged)
         log_frame = ttk.LabelFrame(frame, text=" Daily Test Log ", padding=10)
@@ -1379,10 +1424,13 @@ class ReeferMadness:
                 unit_text = self.param_config[param]["unit"]
                 tk.Label(row_frame, text=unit_text, width=8, anchor="w").pack(side="left")
         
-        # Save button with ocean theme
-        self.save_button = self.create_ocean_button(log_frame, "💾 SAVE TO LOG", 
+        # Save button with ocean theme - positioned left to align with section header
+        button_frame = ttk.Frame(log_frame)
+        button_frame.pack(fill="x", pady=15)
+        
+        self.save_button = self.create_ocean_button(button_frame, "💾 SAVE TO LOG", 
                                                    self.save_test_entry, self.colors['sea_green'])
-        self.save_button.pack(pady=15)
+        self.save_button.pack(side="left")  # Left-aligned with section header
         
         # Add traces to daily log variables to reset save button when user types
         for param, var in self.log_variables.items():
@@ -1403,12 +1451,21 @@ class ReeferMadness:
                 justify="left", wraplength=520, fg="#2c3e50").pack(anchor="w")
 
     def build_trends(self):
-        """Build the Trends tab with normal layout (no individual scrolling)"""
+        """Build the Trends tab with centered title and button layout"""
         frame = self.tabs["Trends"]
         
-        # Refresh button with ocean styling
-        self.create_ocean_button(frame, "REFRESH GRAPHS", self.draw_parameter_graphs, 
-                                 self.colors['wave_blue']).pack(pady=10)
+        # Centered header section at top
+        header_frame = ttk.Frame(frame)
+        header_frame.configure(style='Ocean.TFrame')
+        header_frame.pack(fill="x", pady=(20, 10))
+        
+        # Reef Parameters title - centered above button
+        tk.Label(header_frame, text="Reef Parameter Trends", font=("Arial", 14, "bold"),
+                fg=self.colors['deep_navy'], bg=self.colors['seafoam_blue']).pack()
+        
+        # Refresh button - centered below title
+        self.create_ocean_button(header_frame, "REFRESH GRAPHS", self.draw_parameter_graphs, 
+                                 self.colors['wave_blue']).pack(pady=(10, 0))
         
         # Chart container (no individual scrolling - let tab handle it)
         self.chart_frame = ttk.Frame(frame)
@@ -1493,6 +1550,24 @@ class ReeferMadness:
         self.history_tree.heading("Parameter", text="Parameter")  
         self.history_tree.heading("Value", text="Value")
         
+        # Configure tree colors using proper ttk styling approach
+        try:
+            # Create a custom style for the treeview
+            style = ttk.Style()
+            style.configure('Ocean.Treeview',
+                           background=self.colors['seafoam_blue'],
+                           fieldbackground=self.colors['seafoam_blue'],
+                           foreground=self.colors['deep_ocean_blue'])
+            style.configure('Ocean.Treeview.Heading',
+                           background=self.colors['wave_blue'],
+                           foreground=self.colors['cloud_white'])
+            
+            # Apply the custom style
+            self.history_tree.configure(style='Ocean.Treeview')
+        except Exception as e:
+            print(f"⚠️ Could not apply custom treeview styling: {e}")
+            # Fallback to default styling if custom fails
+        
         # Hide ID column but keep it for deletions
         self.history_tree['displaycolumns'] = ("Timestamp", "Parameter", "Value")
         
@@ -1519,7 +1594,7 @@ class ReeferMadness:
         self.context_menu.add_separator()
         self.context_menu.add_command(label="Export to CSV", command=self.export_data_to_csv)
         
-        # Control buttons with ocean theme
+        # Control buttons with ocean theme and equal spacing
         button_frame = ttk.Frame(frame)
         button_frame.pack(fill="x", padx=20, pady=10)
         
@@ -1527,14 +1602,15 @@ class ReeferMadness:
                                 self.colors['ocean_blue']).pack(side="left")
         
         self.create_ocean_button(button_frame, "REFRESH HISTORY", self.refresh_history_display, 
-                                self.colors['deep_navy']).pack(side="left", padx=10)
+                                self.colors['deep_navy']).pack(side="left", padx=20)  # Equal spacing: 20px
         
-        # Clear All Data button with warning styling (keep clean)
-        self.create_ocean_button(button_frame, "CLEAR ALL DATA", self.clear_all_data_with_confirmation, 
-                                self.colors['coral_orange']).pack(side="left", padx=10)
+        # Clear All Data button with equal spacing and state management
+        self.clear_button = self.create_ocean_button(button_frame, "CLEAR ALL DATA", self.clear_all_data_with_confirmation, 
+                                                     self.colors['coral_orange'])
+        self.clear_button.pack(side="left", padx=20)  # Equal spacing: 20px
         
-        tk.Label(button_frame, text="💡 Double-click to edit • Right-click for menu", 
-                font=("Arial", 8), fg="#7f8c8d", bg=self.colors['seafoam_blue']).pack(side="right")
+        # Update clear button state based on data availability
+        self.update_clear_button_state()
         
         # Initialize history display
         self.sync_history_kits()
@@ -1664,12 +1740,12 @@ class ReeferMadness:
             label = self.step_labels[step_index]
             
             if is_checked:
-                # Add strikethrough by changing font
+                # Add strikethrough by changing font - gray when completed
                 current_text = label.cget("text")
                 label.config(font=('Arial', 9, 'overstrike'), fg="gray")
             else:
-                # Remove strikethrough 
-                label.config(font=('Arial', 9), fg="black")
+                # Remove strikethrough - return to ocean blue default 
+                label.config(font=('Arial', 9), fg=self.colors['deep_ocean_blue'])  # Ocean blue default
                 
                 # Add tooltip-like text for timer
                 timer_info = tk.Label(step_frame, text=f"← Click to start {timer_minutes}min timer", 
@@ -1745,6 +1821,150 @@ class ReeferMadness:
         # Reset display
         self.timer_label.config(text="00:00", fg="#e67e22", font=("Arial", 16, "bold"))
 
+    def get_consumption_product_strength(self):
+        """Get product strength for consumption calculation"""
+        brand = self.cons_brand.get()
+        param = self.cons_parameter.get()
+        
+        if brand == "Custom":
+            try:
+                return float(self.maint_custom_strength.get())
+            except ValueError:
+                return 1.0  # Default fallback
+        
+        return self.param_config[param]["dosing"].get(brand, 1.0)
+
+    def format_consumption_results_with_math(self, details):
+        """Format consumption results with permanently visible math formulas (no toggles)"""
+        param = details['param']
+        tank_vol = details['tank_volume']
+        start = details['start_value']
+        end = details['end_value']
+        depletion = details['depletion']
+        days = details['days']
+        daily_dep = details['daily_depletion']
+        strength = details['product_strength']
+        brand = details['brand']
+        unit = details['unit']
+        base_consumption = details['base_consumption_ml']
+        current_dose = details['current_dose']
+        final_dose = details['recommended_daily_dose']
+        
+        result = f"📊 CONSUMPTION ANALYSIS RESULTS\n\n"
+        result += f"Parameter: {param} ({unit})\n"
+        result += f"Tank Volume: {tank_vol:.1f} gallons\n"
+        result += f"Test Period: {days} days\n\n"
+        result += f"📈 PARAMETER CHANGE:\n"
+        result += f"Start Value: {start} {unit}\n"
+        result += f"End Value: {end} {unit}\n"
+        result += f"Total Depletion: {depletion:.2f} {unit}\n"
+        result += f"Daily Depletion: {daily_dep:.3f} {unit}/day\n\n"
+        result += f"🧮 DOSING CALCULATION:\n"
+        result += f"Product: {brand}\n"
+        result += f"Product Strength: {strength} {unit}/mL\n"
+        result += f"Base Consumption Replacement: {base_consumption:.2f} mL/day\n"
+        result += f"Current Daily Dose (Existing): {current_dose:.2f} mL/day\n\n"
+        result += f"🎯 FINAL RECOMMENDATION:\n"
+        result += f"New Daily Dose = {base_consumption:.2f} + {current_dose:.2f} = {final_dose:.2f} mL/day\n\n"
+        
+        # Add mathematical formulas permanently (clean formatting without icons)
+        result += "MATHEMATICAL FORMULAS:\n\n"
+        result += "DEPLETION CALCULATION:\n"
+        result += f"   Total_Depletion = Start_Value - End_Value\n"
+        result += f"   Total_Depletion = {details['start_value']} - {details['end_value']} = {details['depletion']:.2f} {details['unit']}\n\n"
+        
+        result += "DAILY CONSUMPTION RATE:\n"
+        result += f"   Daily_Depletion = Total_Depletion ÷ Days\n"
+        result += f"   Daily_Depletion = {details['depletion']:.2f} ÷ {details['days']} = {details['daily_depletion']:.3f} {details['unit']}/day\n\n"
+        
+        result += "BASE CONSUMPTION REPLACEMENT:\n"
+        result += f"   Base_Dose = (Daily_Depletion × Tank_Volume) ÷ Product_Strength\n"
+        result += f"   Base_Dose = ({details['daily_depletion']:.3f} × {details['tank_volume']:.1f}) ÷ {details['product_strength']}\n"
+        result += f"   Base_Dose = {details['base_consumption_ml']:.2f} mL/day\n\n"
+        
+        result += "FINAL RECOMMENDATION (WITH EXISTING DOSE):\n"
+        result += f"   New_Daily_Dose = Base_Consumption + Current_Daily_Dose\n"
+        result += f"   New_Daily_Dose = {details['base_consumption_ml']:.2f} + {details['current_dose']:.2f}\n"
+        result += f"   New_Daily_Dose = {details['recommended_daily_dose']:.2f} mL/day\n\n"
+        
+        result += "VARIABLES USED:\n"
+        result += f"   • Tank Volume: {details['tank_volume']:.1f} gallons\n"
+        result += f"   • Product: {details['brand']}\n"
+        result += f"   • Product Concentration: {details['product_strength']} {details['unit']}/mL\n"
+        result += f"   • Test Period: {details['days']} days\n"
+        result += f"   • Current Daily Dose: {details['current_dose']:.2f} mL/day\n\n"
+        
+        result += f"💡 SUMMARY:\n"
+        if current_dose > 0:
+            result += f"You are currently dosing {current_dose:.2f} mL/day. "
+            if final_dose > current_dose:
+                increase = final_dose - current_dose
+                result += f"Increase to {final_dose:.2f} mL/day (+{increase:.2f} mL)."
+            elif final_dose < current_dose:
+                decrease = current_dose - final_dose
+                result += f"Decrease to {final_dose:.2f} mL/day (-{decrease:.2f} mL)."
+            else:
+                result += f"Your current dose is perfect! Continue at {final_dose:.2f} mL/day."
+        else:
+            result += f"Start dosing {final_dose:.2f} mL of {brand} daily to replace natural consumption."
+        
+        return result
+
+    def toggle_consumption_math(self):
+        """Toggle display of consumption calculation math"""
+        if not hasattr(self, 'consumption_math_details'):
+            return
+            
+        current_text = self.consumption_results_text.get("1.0", tk.END).strip()
+        
+        if self.consumption_math_var.get():
+            # Show math
+            math_text = self.generate_consumption_math_display()
+            full_text = current_text + "\n\n" + math_text
+        else:
+            # Hide math - remove math section
+            if "🧮 MATHEMATICAL FORMULAS" in current_text:
+                full_text = current_text.split("🧮 MATHEMATICAL FORMULAS")[0].strip()
+            else:
+                full_text = current_text
+        
+        self.consumption_results_text.config(state="normal")
+        self.consumption_results_text.delete("1.0", tk.END)
+        self.consumption_results_text.insert("1.0", full_text)
+        self.consumption_results_text.config(state="disabled")
+
+    def generate_consumption_math_display(self):
+        """Generate mathematical formulas display for consumption calculation with existing dose integration"""
+        details = self.consumption_math_details
+        
+        math_text = "🧮 MATHEMATICAL FORMULAS:\n\n"
+        math_text += "1️⃣ DEPLETION CALCULATION:\n"
+        math_text += f"   Total_Depletion = Start_Value - End_Value\n"
+        math_text += f"   Total_Depletion = {details['start_value']} - {details['end_value']} = {details['depletion']:.2f} {details['unit']}\n\n"
+        
+        math_text += "2️⃣ DAILY CONSUMPTION RATE:\n"
+        math_text += f"   Daily_Depletion = Total_Depletion ÷ Days\n"
+        math_text += f"   Daily_Depletion = {details['depletion']:.2f} ÷ {details['days']} = {details['daily_depletion']:.3f} {details['unit']}/day\n\n"
+        
+        math_text += "3️⃣ BASE CONSUMPTION REPLACEMENT:\n"
+        math_text += f"   Base_Dose = (Daily_Depletion × Tank_Volume) ÷ Product_Strength\n"
+        math_text += f"   Base_Dose = ({details['daily_depletion']:.3f} × {details['tank_volume']:.1f}) ÷ {details['product_strength']}\n"
+        math_text += f"   Base_Dose = {details['base_consumption_ml']:.2f} mL/day\n\n"
+        
+        math_text += "4️⃣ FINAL RECOMMENDATION (WITH EXISTING DOSE):\n"
+        math_text += f"   New_Daily_Dose = Base_Consumption + Current_Daily_Dose\n"
+        math_text += f"   New_Daily_Dose = {details['base_consumption_ml']:.2f} + {details['current_dose']:.2f}\n"
+        math_text += f"   New_Daily_Dose = {details['recommended_daily_dose']:.2f} mL/day\n\n"
+        
+        math_text += "📋 VARIABLES USED:\n"
+        math_text += f"   • Tank Volume: {details['tank_volume']:.1f} gallons\n"
+        math_text += f"   • Product: {details['brand']}\n"
+        math_text += f"   • Product Concentration: {details['product_strength']} {details['unit']}/mL\n"
+        math_text += f"   • Test Period: {details['days']} days\n"
+        math_text += f"   • Current Daily Dose: {details['current_dose']:.2f} mL/day\n"
+        
+        return math_text
+
     def calculate_dosing_plan(self):
         """Calculate safe dosing plan with comprehensive validation"""
         try:
@@ -1809,22 +2029,56 @@ class ReeferMadness:
             # Calculate total dose needed (in mL)
             total_dose_ml = (difference * volume_liters) / strength
             
-            # Determine safe dosing schedule
-            max_daily_change = self.param_config[param]["max_daily"]
-            days_needed = max(1, int(abs(difference) / max_daily_change) + 1)
-            
-            # Special considerations for alkalinity and pH
-            if param == "Alkalinity" and self.ph_value.get():
-                ph = float(self.ph_value.get())
-                if ph > 8.3:
-                    days_needed = max(days_needed, 3)
-                    ph_warning = " (Extended due to high pH - alkalinity raises pH)"
+            # Real-world alkalinity safety validation based on manufacturer guidelines
+            if param == "Alkalinity":
+                # Safety limit: 5 mL per 10 gallons per day = 0.5 mL per gallon per day maximum
+                max_ml_per_gallon_per_day = 0.5
+                max_daily_ml = volume_gallons * max_ml_per_gallon_per_day
+                
+                # Calculate minimum days needed based on mL dosing limit (more restrictive than dKH limit)
+                days_needed_by_ml = max(1, int(abs(total_dose_ml) / max_daily_ml) + 1)
+                
+                # Also check traditional dKH limit for comparison
+                max_daily_change = self.param_config[param]["max_daily"]
+                days_needed_by_dkh = max(1, int(abs(difference) / max_daily_change) + 1)
+                
+                # Use the more conservative (longer) schedule for safety
+                days_needed = max(days_needed_by_ml, days_needed_by_dkh, 1)
+                
+                # Calculate actual daily dose based on conservative schedule
+                daily_dose_ml = abs(total_dose_ml) / days_needed
+                daily_ml_per_gallon = daily_dose_ml / volume_gallons
+                
+                # Safety warning if approaching limits
+                if daily_ml_per_gallon > 0.4:  # Within 80% of limit
+                    safety_warning = f"\n⚠️  APPROACHING SAFETY LIMIT: {daily_ml_per_gallon:.2f} mL/gallon/day (max: 0.5)"
                 else:
-                    ph_warning = ""
+                    safety_warning = ""
+                
+                print(f"🔒 Alkalinity Safety Check: {daily_dose_ml:.2f} mL/day ({daily_ml_per_gallon:.2f} mL/gal/day) over {days_needed} days")
+                
             else:
-                ph_warning = ""
+                # For other parameters, use existing logic
+                max_daily_change = self.param_config[param]["max_daily"]
+                days_needed = max(1, int(abs(difference) / max_daily_change) + 1)
+                daily_dose_ml = abs(total_dose_ml) / days_needed
+                safety_warning = ""
             
-            daily_dose_ml = total_dose_ml / days_needed
+            # Store calculation details for math transparency
+            self.action_plan_math_details = {
+                'param': param,
+                'tank_volume': volume_gallons,
+                'current': current_val,
+                'target': target_val,
+                'change_needed': difference,
+                'product_strength': strength,
+                'brand': self.selected_brand.get(),
+                'unit': self.alkalinity_unit.get() if param == 'Alkalinity' else self.param_config[param]['unit'],
+                'total_dose': total_dose_ml,
+                'max_daily': max_daily_change,
+                'daily_dose': daily_dose_ml,
+                'days': days_needed
+            }
             
             # Format results
             if difference > 0:
@@ -1836,18 +2090,53 @@ class ReeferMadness:
                 total_dose_ml = abs(total_dose_ml)
                 daily_dose_ml = abs(daily_dose_ml)
             
-            # Create detailed result message
+            # Create detailed result message with real-world alkalinity safety validation
+            if param == "Alkalinity":
+                daily_ml_per_gallon = daily_dose_ml / volume_gallons
+                safety_info = f"\n\nREAL-WORLD SAFETY VALIDATION:\n• Daily dose: {daily_dose_ml:.2f} mL = {daily_ml_per_gallon:.2f} mL per gallon\n• Safety limit: 0.5 mL per gallon per day (5 mL per 10 gallons)\n• Your dose is {'SAFE' if daily_ml_per_gallon <= 0.5 else 'EXCEEDS LIMIT'}{safety_warning}"
+            else:
+                safety_info = ""
+                
             result_text = f"""SAFETY DOSING PLAN - {action} {param}
 
 Tank: {volume_gallons:.0f} gallons ({volume_liters:.1f}L)
 Change needed: {current_val} → {target_val} {self.alkalinity_unit.get() if param == 'Alkalinity' else self.param_config[param]['unit']}
 Product: {self.selected_brand.get()}
 
-RECOMMENDED SCHEDULE{ph_warning}:
-• Total dose needed: {total_dose_ml:.1f} mL
+RECOMMENDED SCHEDULE:
+• Total dose needed: {abs(total_dose_ml):.1f} mL
 • {dose_direction}: {daily_dose_ml:.1f} mL per day
 • Duration: {days_needed} days
-• Test daily and adjust as needed
+• Test daily and adjust as needed{safety_info}
+
+MATHEMATICAL FORMULAS:
+
+PARAMETER CHANGE REQUIRED:
+   Change_Needed = Target_Value - Current_Value
+   Change_Needed = {target_val} - {current_val} = {difference:.2f} {self.alkalinity_unit.get() if param == 'Alkalinity' else self.param_config[param]['unit']}
+
+TOTAL DOSE CALCULATION:
+   Total_Dose = (Change_Needed * Tank_Volume) / Product_Strength
+   Total_Dose = ({difference:.2f} * {volume_gallons:.1f}) / {strength}
+   Total_Dose = {abs(total_dose_ml):.2f} mL
+
+DAILY SAFETY DOSING:
+   Safety_Limit = 0.5 mL per gallon per day (real-world limit)
+   Max_Daily_mL = Tank_Volume * 0.5 = {volume_gallons:.1f} * 0.5 = {volume_gallons * 0.5:.1f} mL/day
+   Actual_Daily_Dose = {daily_dose_ml:.2f} mL/day
+   Days_Required = Total_Dose / Daily_Dose = {abs(total_dose_ml):.2f} / {daily_dose_ml:.2f} = {days_needed:.1f} days
+
+VARIABLES USED:
+   • Tank Volume: {volume_gallons:.1f} gallons  
+   • Product: {self.selected_brand.get()}
+   • Product Concentration: {strength} {self.alkalinity_unit.get() if param == 'Alkalinity' else self.param_config[param]['unit']}/mL"""
+            
+            if param == "Alkalinity":
+                result_text += f"""
+   • Real-World Safety Limit: 0.5 mL per gallon per day (5 mL per 10 gallons)
+   • Manufacturer Guidance: Each mL raises 2.1 dKH per gallon"""
+            
+            result_text += """
 
 ⚠️  SAFETY REMINDERS:
 • Always test before dosing
@@ -1864,8 +2153,66 @@ RECOMMENDED SCHEDULE{ph_warning}:
         except Exception as e:
             messagebox.showerror("Calculation Error", f"Please check all inputs are valid numbers.\n\nError: {str(e)}")
 
+    def toggle_action_math(self):
+        """Toggle display of Action Plan calculation math"""
+        if not hasattr(self, 'action_plan_math_details'):
+            return
+            
+        current_text = self.result_text.get("1.0", tk.END).strip()
+        
+        if self.action_math_var.get():
+            # Show math
+            math_text = self.generate_action_plan_math_display()
+            full_text = current_text + "\n\n" + math_text
+        else:
+            # Hide math - remove math section
+            if "🧮 MATHEMATICAL FORMULAS" in current_text:
+                full_text = current_text.split("🧮 MATHEMATICAL FORMULAS")[0].strip()
+            else:
+                full_text = current_text
+        
+        self.result_text.config(state="normal")
+        self.result_text.delete("1.0", tk.END)
+        self.result_text.insert("1.0", full_text)
+        self.result_text.config(state="disabled")
+
+    def generate_action_plan_math_display(self):
+        """Generate mathematical formulas display for Action Plan calculation"""
+        if not hasattr(self, 'action_plan_math_details'):
+            return ""
+            
+        details = self.action_plan_math_details
+        
+        math_text = "🧮 MATHEMATICAL FORMULAS:\n\n"
+        math_text += "1️⃣ PARAMETER CHANGE REQUIRED:\n"
+        math_text += f"   Change_Needed = Target_Value - Current_Value\n"
+        math_text += f"   Change_Needed = {details['target']} - {details['current']} = {details['change_needed']:.2f} {details['unit']}\n\n"
+        
+        math_text += "2️⃣ TOTAL DOSE CALCULATION:\n"
+        math_text += f"   Total_Dose = (Change_Needed × Tank_Volume) ÷ Product_Strength\n"
+        math_text += f"   Total_Dose = ({details['change_needed']:.2f} × {details['tank_volume']:.1f}) ÷ {details['product_strength']}\n"
+        math_text += f"   Total_Dose = {details['total_dose']:.2f} mL\n\n"
+        
+        math_text += "3️⃣ DAILY SAFETY DOSING:\n"
+        math_text += f"   Max_Daily_Change = {details['max_daily']} {details['unit']}/day (safety limit)\n"
+        math_text += f"   Daily_Dose = (Max_Daily_Change × Tank_Volume) ÷ Product_Strength\n"
+        math_text += f"   Daily_Dose = ({details['max_daily']} × {details['tank_volume']:.1f}) ÷ {details['product_strength']}\n"
+        math_text += f"   Daily_Dose = {details['daily_dose']:.2f} mL/day\n\n"
+        
+        math_text += "4️⃣ SCHEDULE CALCULATION:\n"
+        math_text += f"   Days_Required = Total_Dose ÷ Daily_Dose\n"
+        math_text += f"   Days_Required = {details['total_dose']:.2f} ÷ {details['daily_dose']:.2f} = {details['days']:.1f} days\n\n"
+        
+        math_text += "📋 VARIABLES USED:\n"
+        math_text += f"   • Tank Volume: {details['tank_volume']:.1f} gallons\n"
+        math_text += f"   • Product: {details['brand']}\n"
+        math_text += f"   • Product Concentration: {details['product_strength']} {details['unit']}/mL\n"
+        math_text += f"   • Safety Limit: {details['max_daily']} {details['unit']}/day max change\n"
+        
+        return math_text
+
     def calculate_consumption_rate(self):
-        """Calculate daily consumption rate with input validation"""
+        """Calculate daily consumption rate with input validation and inline display"""
         try:
             # Validate all inputs
             param = self.cons_parameter.get()
@@ -1884,6 +2231,102 @@ RECOMMENDED SCHEDULE{ph_warning}:
             if not is_valid:
                 messagebox.showerror("Invalid Input", f"Days: {error_msg}")
                 return
+            
+            # Get validated inputs including current daily dose
+            tank_volume = float(self.tank_volume.get())
+            volume_unit = self.volume_unit.get()
+            start_value = float(self.cons_start.get())
+            end_value = float(self.cons_end.get())
+            days = float(self.cons_days.get())
+            brand = self.cons_brand.get()
+            
+            # Get current daily dose (existing dosing offset)
+            current_dose = 0
+            if self.current_daily_dose.get().strip():
+                try:
+                    current_dose = float(self.current_daily_dose.get())
+                except ValueError:
+                    current_dose = 0
+            
+            # Convert to gallons if needed for calculation
+            tank_volume_gallons = tank_volume / self.LITERS_PER_GALLON if volume_unit == "Liters" else tank_volume
+            
+            # Calculate depletion and daily consumption
+            depletion = start_value - end_value  # Parameter loss
+            daily_depletion = depletion / days if days > 0 else 0
+            
+            # Get product concentration
+            product_strength = self.get_consumption_product_strength()
+            
+            # Calculate required daily dose with existing dose offset
+            if param == "Alkalinity":
+                # Handle alkalinity unit conversion
+                unit = self.cons_alk_unit.get()
+                if unit == "ppm" and daily_depletion > 50:
+                    daily_depletion_dkh = daily_depletion / self.DKH_TO_PPM_FACTOR
+                else:
+                    daily_depletion_dkh = daily_depletion
+                
+                # Calculate base consumption replacement
+                base_consumption_ml = (daily_depletion_dkh * tank_volume_gallons) / product_strength
+                
+                # Final recommendation includes existing dose offset
+                # New Daily Dose = (Calculated Consumption) + (Current Daily Dose)
+                recommended_daily_dose = base_consumption_ml + current_dose
+                
+                # Store calculation details for math display
+                self.consumption_math_details = {
+                    'param': param,
+                    'tank_volume': tank_volume_gallons,
+                    'start_value': start_value,
+                    'end_value': end_value,
+                    'depletion': depletion,
+                    'days': days,
+                    'daily_depletion': daily_depletion_dkh,
+                    'product_strength': product_strength,
+                    'brand': brand,
+                    'unit': unit,
+                    'base_consumption_ml': base_consumption_ml,
+                    'current_dose': current_dose,
+                    'recommended_daily_dose': recommended_daily_dose
+                }
+            else:
+                # For other parameters (future expansion)
+                base_consumption_ml = (daily_depletion * tank_volume_gallons) / product_strength
+                recommended_daily_dose = base_consumption_ml + current_dose
+                
+                self.consumption_math_details = {
+                    'param': param,
+                    'tank_volume': tank_volume_gallons,
+                    'start_value': start_value,
+                    'end_value': end_value,
+                    'depletion': depletion,
+                    'days': days,
+                    'daily_depletion': daily_depletion,
+                    'product_strength': product_strength,
+                    'brand': brand,
+                    'unit': self.param_config[param]['unit'],
+                    'base_consumption_ml': base_consumption_ml,
+                    'current_dose': current_dose,
+                    'recommended_daily_dose': recommended_daily_dose
+                }
+            
+            # Format results for inline display with permanent math visibility
+            result_text = self.format_consumption_results_with_math(self.consumption_math_details)
+            
+            # Display results inline
+            self.consumption_results_text.config(state="normal")
+            self.consumption_results_text.delete("1.0", tk.END)
+            self.consumption_results_text.insert("1.0", result_text)
+            self.consumption_results_text.config(state="disabled")
+            
+            # Show the results frame
+            self.consumption_results_frame.pack(fill="x", padx=20, pady=(10,0))
+                
+        except ValueError as e:
+            messagebox.showerror("Calculation Error", f"Invalid input values: {str(e)}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Calculation failed: {str(e)}")
             
             # Get tank volume
             is_valid, error_msg = self.validate_numeric_input(self.tank_volume.get(), 1, 10000)
@@ -1997,6 +2440,7 @@ RECOMMENDED SCHEDULE{ph_warning}:
                 conn.commit()
                 conn.close()
                 self.refresh_history_display()
+                self.update_clear_button_state()  # Update clear button state
                 
                 # Change button text to show success (no popup) - Enhanced with ocean colors
                 self.save_button.config(text="✅ SAVED", bg="#2ecc71")  # Brighter green for success
@@ -2018,7 +2462,7 @@ RECOMMENDED SCHEDULE{ph_warning}:
             self.save_button.config(text="💾 SAVE TO LOG", bg=self.colors['sea_green'])
 
     def add_custom_optimal_controls(self):
-        """Add custom optimal level controls below charts for user customization (prevent duplicates)"""
+        """Add custom optimal level controls below charts with persistence and smart feedback"""
         # Strong duplicate prevention - check multiple ways
         if hasattr(self, 'custom_optimal_frame'):
             try:
@@ -2046,12 +2490,16 @@ RECOMMENDED SCHEDULE{ph_warning}:
         
         # Instructions
         tk.Label(self.custom_optimal_frame, 
-                text="Customize your optimal target lines for each parameter (leave blank to use research defaults):",
+                text="Customize your optimal target lines for each parameter (leave blank to use factory defaults):",
                 font=("Arial", 9), fg=self.colors['deep_ocean_blue'], 
                 bg=self.colors['seafoam_blue']).pack(anchor="w", pady=(0,10))
         
+        # Load existing custom values from database
+        self.load_custom_optimal_levels()
+        
         # Create custom optimal level inputs for each parameter
         self.custom_optimal_vars = {}
+        self.custom_optimal_labels = {}  # Store label references for updates
         
         for param in self.param_config.keys():
             row_frame = ttk.Frame(self.custom_optimal_frame)
@@ -2060,57 +2508,236 @@ RECOMMENDED SCHEDULE{ph_warning}:
             
             # Parameter label
             config = self.param_config[param]
-            default_value = config['target']
+            factory_default = config['target']  # Original factory default
+            current_value = self.get_current_custom_level(param)  # User's custom value or factory default
             unit = config['unit']
-            
-            # Smart alkalinity unit detection for display
-            if param == "Alkalinity":
-                # Default to ppm for alkalinity (more common for high precision)
-                display_unit = "ppm"
-                display_default = default_value * ReeferMadness.DKH_TO_PPM_FACTOR  # Convert dKH to ppm for display
-                unit_info = f"ppm (default: {display_default:.0f}) - Use high numbers like 150-180"
-            else:
-                display_unit = unit
-                display_default = default_value
-                unit_info = f"{unit} (default: {display_default})"
             
             tk.Label(row_frame, text=f"{param}:", width=15, anchor="w", font=('Arial', 9, 'bold'),
                     bg=self.colors['seafoam_blue'], fg=self.colors['deep_ocean_blue']).pack(side="left")
             
-            # Custom optimal value entry with unit detection
+            # Custom optimal value entry with smart alkalinity handling
             self.custom_optimal_vars[param] = tk.StringVar()
-            custom_entry = tk.Entry(row_frame, textvariable=self.custom_optimal_vars[param], width=10,
+            
+            # Set current custom value if it exists
+            if param in self.custom_optimal_values:
+                if param == "Alkalinity":
+                    # Display in ppm by default for alkalinity
+                    display_value = self.custom_optimal_values[param] * ReeferMadness.DKH_TO_PPM_FACTOR
+                    self.custom_optimal_vars[param].set(f"{display_value:.0f}")
+                else:
+                    self.custom_optimal_vars[param].set(str(self.custom_optimal_values[param]))
+            
+            custom_entry = tk.Entry(row_frame, textvariable=self.custom_optimal_vars[param], width=12,
                                    bg=self.colors['cloud_white'], fg=self.colors['deep_ocean_blue'])
             custom_entry.pack(side="left", padx=5)
             
-            # Add alkalinity unit detection trace
+            # Smart unit detection for alkalinity
             if param == "Alkalinity":
-                self.custom_optimal_vars[param].trace_add("write", self.detect_alkalinity_unit_in_custom)
+                # Create dynamic label for alkalinity unit switching
+                self.alkalinity_custom_unit = tk.StringVar(value="ppm")
+                self.alkalinity_custom_label = tk.Label(row_frame, text="ppm", font=('Arial', 9, 'bold'),
+                                                        bg=self.colors['seafoam_blue'], fg=self.colors['deep_ocean_blue'])
+                self.alkalinity_custom_label.pack(side="left", padx=2)
+                
+                # Add smart unit switching trace
+                self.custom_optimal_vars[param].trace_add("write", self.smart_alkalinity_unit_switch)
             
-            # Unit and default info
-            tk.Label(row_frame, text=unit_info, font=('Arial', 8),
-                    bg=self.colors['seafoam_blue'], fg="#7f8c8d").pack(side="left", padx=5)
+            # Enhanced status display with current vs factory defaults
+            if param == "Alkalinity":
+                current_ppm = current_value * ReeferMadness.DKH_TO_PPM_FACTOR
+                factory_ppm = factory_default * ReeferMadness.DKH_TO_PPM_FACTOR
+                status_text = f"Current: {current_ppm:.0f} | Factory: {factory_ppm:.0f}"
+            else:
+                status_text = f"Current: {current_value} | Factory: {factory_default}"
+            
+            self.custom_optimal_labels[param] = tk.Label(row_frame, text=status_text, font=('Arial', 8),
+                                                        bg=self.colors['seafoam_blue'], fg="#7f8c8d")
+            self.custom_optimal_labels[param].pack(side="left", padx=10)
         
-        # Apply custom levels button
-        self.create_ocean_button(self.custom_optimal_frame, "APPLY CUSTOM LEVELS", 
-                                 self.apply_custom_optimal_levels, 
-                                 self.colors['wave_blue']).pack(pady=10)
+        # Apply button with feedback
+        button_frame = ttk.Frame(self.custom_optimal_frame)
+        button_frame.configure(style='Ocean.TFrame')
+        button_frame.pack(pady=10)
+        
+        self.apply_levels_button = self.create_ocean_button(button_frame, "APPLY CUSTOM LEVELS", 
+                                                           self.apply_custom_optimal_levels_with_feedback, 
+                                                           self.colors['wave_blue'])
+        self.apply_levels_button.pack()
 
-    def detect_alkalinity_unit_in_custom(self, *args):
-        """Detect if alkalinity value in custom optimal is dKH or ppm"""
+    def load_custom_optimal_levels(self):
+        """Load custom optimal levels from database"""
+        self.custom_optimal_values = {}
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            
+            # Create custom_levels table if it doesn't exist
+            cursor.execute('''CREATE TABLE IF NOT EXISTS custom_levels (
+                parameter TEXT PRIMARY KEY,
+                value REAL NOT NULL,
+                timestamp TEXT NOT NULL
+            )''')
+            
+            # Load existing custom values
+            cursor.execute('SELECT parameter, value FROM custom_levels')
+            for param, value in cursor.fetchall():
+                self.custom_optimal_values[param] = value
+                # Update the actual parameter config
+                if param in self.param_config:
+                    self.param_config[param]['target'] = value
+                    
+            conn.close()
+            print(f"🌊 Loaded {len(self.custom_optimal_values)} custom optimal levels")
+            
+        except Exception as e:
+            print(f"⚠️ Could not load custom levels: {e}")
+            self.custom_optimal_values = {}
+
+    def save_custom_optimal_levels(self, custom_values):
+        """Save custom optimal levels to database"""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            
+            for param, value in custom_values.items():
+                cursor.execute('''INSERT OR REPLACE INTO custom_levels 
+                                 (parameter, value, timestamp) VALUES (?, ?, ?)''',
+                               (param, value, timestamp))
+            
+            conn.commit()
+            conn.close()
+            print(f"🌊 Saved {len(custom_values)} custom optimal levels to database")
+            return True
+            
+        except Exception as e:
+            print(f"❌ Could not save custom levels: {e}")
+            return False
+
+    def get_current_custom_level(self, param):
+        """Get current custom level or factory default"""
+        return self.custom_optimal_values.get(param, self.param_config[param]['target'])
+
+    def smart_alkalinity_unit_switch(self, *args):
+        """Smart unit switching for alkalinity in custom levels"""
         try:
             alk_value_str = self.custom_optimal_vars["Alkalinity"].get().strip()
-            if alk_value_str:
+            if alk_value_str and hasattr(self, 'alkalinity_custom_label'):
                 alk_value = float(alk_value_str)
                 
-                # Auto-detect based on value range
+                # Auto-detect and switch unit display
                 if alk_value > 50:  # Likely ppm (120-180 range)
-                    print(f"🌊 Detected alkalinity in ppm: {alk_value}")
+                    self.alkalinity_custom_unit.set("ppm")
+                    self.alkalinity_custom_label.config(text="ppm")
+                    print(f"🌊 Switched to ppm display: {alk_value}")
                 elif alk_value <= 20:  # Likely dKH (7-12 range)
-                    print(f"🌊 Detected alkalinity in dKH: {alk_value}")
+                    self.alkalinity_custom_unit.set("dKH")
+                    self.alkalinity_custom_label.config(text="dKH")
+                    print(f"🌊 Switched to dKH display: {alk_value}")
                     
-        except (ValueError, KeyError):
-            pass  # Invalid input or alkalinity not found
+        except (ValueError, KeyError, AttributeError):
+            pass  # Invalid input or components not ready
+
+    def apply_custom_optimal_levels_with_feedback(self):
+        """Apply custom optimal levels with database persistence and user feedback"""
+        try:
+            custom_values = {}
+            
+            # Update parameter configuration with custom values
+            for param, var in self.custom_optimal_vars.items():
+                custom_value = var.get().strip()
+                if custom_value:
+                    try:
+                        custom_float = float(custom_value)
+                        if custom_float > 0:  # Only accept positive values
+                            
+                            # Smart alkalinity unit handling with consistency check
+                            if param == "Alkalinity":
+                                if custom_float > 50:  # Likely ppm (120-180 range)
+                                    # Convert ppm to dKH for internal storage (consistency with rest of app)
+                                    target_dkh = custom_float / ReeferMadness.DKH_TO_PPM_FACTOR
+                                    custom_values[param] = target_dkh
+                                    self.param_config[param]['target'] = target_dkh
+                                    print(f"✅ Custom alkalinity set: {custom_float} ppm = {target_dkh:.2f} dKH")
+                                else:  # Likely dKH (7-12 range)
+                                    custom_values[param] = custom_float
+                                    self.param_config[param]['target'] = custom_float
+                                    print(f"✅ Custom alkalinity set: {custom_float} dKH")
+                            else:
+                                custom_values[param] = custom_float
+                                self.param_config[param]['target'] = custom_float
+                                print(f"✅ Custom optimal level set for {param}: {custom_float}")
+                                
+                    except ValueError:
+                        print(f"⚠️ Invalid value for {param}: {custom_value}")
+            
+            # Save to database for persistence
+            if custom_values:
+                saved = self.save_custom_optimal_levels(custom_values)
+                if saved:
+                    # Update stored custom values
+                    self.custom_optimal_values.update(custom_values)
+                    
+                    # Update status labels
+                    self.update_custom_level_labels()
+                    
+                    # Button feedback
+                    self.show_apply_button_feedback("LEVELS SAVED!")
+                    
+                    # Refresh graphs if they exist
+                    self.draw_parameter_graphs()
+                else:
+                    self.show_apply_button_feedback("SAVE FAILED!", "#e74c3c")
+            else:
+                # No custom values entered
+                self.show_apply_button_feedback("NO CHANGES", "#95a5a6")
+                
+        except Exception as e:
+            print(f"❌ Error applying custom levels: {e}")
+            self.show_apply_button_feedback("ERROR!", "#e74c3c")
+
+    def show_apply_button_feedback(self, text, color=None):
+        """Show visual feedback on the apply button"""
+        if not hasattr(self, 'apply_levels_button'):
+            return
+            
+        original_text = "APPLY CUSTOM LEVELS"
+        original_color = self.colors['wave_blue']
+        feedback_color = color or self.colors['sea_green']
+        
+        # Change button appearance
+        self.apply_levels_button.config(text=text, bg=feedback_color)
+        
+        # Reset after 2 seconds
+        def reset_button():
+            if hasattr(self, 'apply_levels_button'):
+                self.apply_levels_button.config(text=original_text, bg=original_color)
+        
+        self.root.after(2000, reset_button)
+
+    def update_custom_level_labels(self):
+        """Update the current vs factory labels"""
+        for param in self.param_config.keys():
+            if param in self.custom_optimal_labels:
+                factory_default = self.param_config[param]['target']  # This is now the custom value
+                original_default = {  # Original factory defaults
+                    "Alkalinity": 8.5,
+                    "Calcium": 420,
+                    "Magnesium": 1350,
+                    "Phosphate": 0.03
+                }.get(param, factory_default)
+                
+                current_value = self.get_current_custom_level(param)
+                
+                if param == "Alkalinity":
+                    current_ppm = current_value * ReeferMadness.DKH_TO_PPM_FACTOR
+                    factory_ppm = original_default * ReeferMadness.DKH_TO_PPM_FACTOR
+                    status_text = f"Current: {current_ppm:.0f} | Factory: {factory_ppm:.0f}"
+                else:
+                    status_text = f"Current: {current_value} | Factory: {original_default}"
+                
+                self.custom_optimal_labels[param].config(text=status_text)
 
     def apply_custom_optimal_levels(self):
         """Apply user's custom optimal levels with smart alkalinity unit detection"""
@@ -2157,6 +2784,9 @@ RECOMMENDED SCHEDULE{ph_warning}:
                     font=('Arial', 12)).pack(pady=50)
             return
         
+        # Clear any existing matplotlib figures to prevent ghost title interference
+        plt.close('all')  # Close all previous figures
+        
         try:
             conn = sqlite3.connect(self.db_path)
             
@@ -2188,16 +2818,25 @@ RECOMMENDED SCHEDULE{ph_warning}:
             min_height_per_chart = 3  # Slightly smaller for better fit
             total_height = min_height_per_chart * num_params
             
-            # Configure matplotlib with centered title and proper styling
+            # Configure matplotlib with complete title suppression
             plt.style.use('default')  # Reset any previous styles
+            plt.rcParams.update({'figure.titlesize': 0})  # Suppress default title sizing
+            
             fig, axes = plt.subplots(num_params, 1, figsize=(chart_width, total_height), 
                                    constrained_layout=True, facecolor='#f0f8ff')  # Seafoam background
             if num_params == 1:
                 axes = [axes]  # Make it a list for consistency
             
-            # Centered title with proper positioning
-            fig.suptitle('Reef Parameter Trends', fontsize=14, fontweight='bold', 
-                        color='#1e3d59', y=0.98)  # Slightly higher positioning for better centering
+            # Explicitly clear any figure-level title to prevent ghost text
+            fig.suptitle('')  # Empty title to override any matplotlib defaults
+            fig._suptitle = None  # Force clear internal title reference
+            
+            # Additional title suppression for constrained layout
+            if hasattr(fig, 'set_constrained_layout_pads'):
+                fig.set_constrained_layout_pads(hspace=0.1, wspace=0.1)
+            
+            # No matplotlib title - using Tkinter label above button for clean UI
+            # This prevents duplicate "Reef Parameter Trends" ghost text
             
             for i, param in enumerate(self.param_config.keys()):
                 ax = axes[i]
@@ -2385,38 +3024,46 @@ RECOMMENDED SCHEDULE{ph_warning}:
             
         row_id, timestamp, parameter, value = item_values
         
-        # Create edit dialog
+        # Create edit dialog with ocean theme and proper sizing
         edit_dialog = tk.Toplevel(self.root)
         edit_dialog.title("Edit Test Entry")
-        edit_dialog.geometry("400x300")
+        edit_dialog.geometry("400x550")  # Taller to ensure buttons are visible
         edit_dialog.resizable(False, False)
+        edit_dialog.configure(bg=self.colors['seafoam_blue'])  # Ocean theme background
         
         # Center the dialog
         edit_dialog.transient(self.root)
         edit_dialog.grab_set()
         
-        # Edit form
-        tk.Label(edit_dialog, text="Edit Test Entry", font=("Arial", 14, "bold")).pack(pady=10)
+        # Edit form with ocean theme
+        tk.Label(edit_dialog, text="Edit Test Entry", font=("Arial", 14, "bold"),
+                bg=self.colors['seafoam_blue'], fg=self.colors['deep_navy']).pack(pady=10)
         
-        # Timestamp
-        tk.Label(edit_dialog, text="Date & Time:").pack(anchor="w", padx=20)
+        # Timestamp with ocean theme
+        tk.Label(edit_dialog, text="Date & Time:", bg=self.colors['seafoam_blue'], 
+                fg=self.colors['deep_navy']).pack(anchor="w", padx=20)
         timestamp_var = tk.StringVar(value=timestamp)
-        tk.Entry(edit_dialog, textvariable=timestamp_var, width=30).pack(pady=5, padx=20, fill="x")
+        tk.Entry(edit_dialog, textvariable=timestamp_var, width=30,
+                bg=self.colors['cloud_white'], fg=self.colors['deep_navy']).pack(pady=5, padx=20, fill="x")
         
-        # Parameter
-        tk.Label(edit_dialog, text="Parameter:").pack(anchor="w", padx=20, pady=(10,0))
+        # Parameter with ocean theme
+        tk.Label(edit_dialog, text="Parameter:", bg=self.colors['seafoam_blue'], 
+                fg=self.colors['deep_navy']).pack(anchor="w", padx=20, pady=(10,0))
         parameter_var = tk.StringVar(value=parameter.split(" (")[0])  # Remove unit suffix if present
         param_combo = ttk.Combobox(edit_dialog, textvariable=parameter_var, 
                                   values=list(self.param_config.keys()), state="readonly")
         param_combo.pack(pady=5, padx=20, fill="x")
         
-        # Value
-        tk.Label(edit_dialog, text="Value:").pack(anchor="w", padx=20, pady=(10,0))
+        # Value with ocean theme
+        tk.Label(edit_dialog, text="Value:", bg=self.colors['seafoam_blue'], 
+                fg=self.colors['deep_navy']).pack(anchor="w", padx=20, pady=(10,0))
         value_var = tk.StringVar(value=str(value))
-        tk.Entry(edit_dialog, textvariable=value_var, width=30).pack(pady=5, padx=20, fill="x")
+        tk.Entry(edit_dialog, textvariable=value_var, width=30,
+                bg=self.colors['cloud_white'], fg=self.colors['deep_navy']).pack(pady=5, padx=20, fill="x")
         
-        # Unit selector for alkalinity
+        # Unit selector for alkalinity with ocean theme
         unit_frame = ttk.Frame(edit_dialog)
+        unit_frame.configure(style='Ocean.TFrame')
         unit_frame.pack(pady=5)
         
         unit_var = tk.StringVar(value="dKH")
@@ -2436,10 +3083,6 @@ RECOMMENDED SCHEDULE{ph_warning}:
         ttk.Radiobutton(unit_frame, text="ppm", variable=unit_var, value="ppm").pack(side="left", padx=5)
         
         toggle_unit_selector()  # Initial call
-        
-        # Buttons
-        button_frame = ttk.Frame(edit_dialog)
-        button_frame.pack(pady=20)
         
         def save_changes():
             try:
@@ -2480,11 +3123,28 @@ RECOMMENDED SCHEDULE{ph_warning}:
             except Exception as e:
                 messagebox.showerror("Error", f"Could not update entry:\n{str(e)}")
         
-        tk.Button(button_frame, text="Save Changes", command=save_changes, 
-                 bg="#27ae60", fg="white", font=("Arial", 10, "bold")).pack(side="left", padx=10)
+        # Create button frame at bottom with proper padding
+        button_frame = ttk.Frame(edit_dialog)
+        button_frame.configure(style='Ocean.TFrame')
+        button_frame.pack(pady=20, padx=20, fill="x", side="bottom")
         
-        tk.Button(button_frame, text="Cancel", command=edit_dialog.destroy, 
-                 bg="#95a5a6", fg="white").pack(side="left")
+        # Save Changes button with ocean styling and proper padding to prevent clipping
+        save_btn = tk.Button(button_frame, text="Save Changes", command=save_changes,
+                            bg=self.colors['sea_green'], fg=self.colors['cloud_white'], 
+                            font=("Arial", 10, "bold"), relief='flat', borderwidth=0,
+                            cursor='hand2', activebackground=self.colors['wave_blue'],
+                            activeforeground=self.colors['cloud_white'],
+                            pady=8, ipady=5)  # ipady=5 prevents text clipping
+        save_btn.pack(side="left", padx=10)
+        
+        # Cancel button with ocean styling and proper padding to prevent clipping
+        cancel_btn = tk.Button(button_frame, text="Cancel", command=edit_dialog.destroy,
+                              bg="#95a5a6", fg=self.colors['cloud_white'], 
+                              font=("Arial", 10, "bold"), relief='flat', borderwidth=0,
+                              cursor='hand2', activebackground="#7f8c8d",
+                              activeforeground=self.colors['cloud_white'],
+                              pady=8, ipady=5)  # ipady=5 prevents text clipping
+        cancel_btn.pack(side="left")
 
     def delete_selected_row(self):
         """Delete selected row from database without confirmation"""
@@ -2513,71 +3173,61 @@ RECOMMENDED SCHEDULE{ph_warning}:
             pass  # Fail silently - no popup
 
     def clear_all_data_with_confirmation(self):
-        """Clear all data with proper confirmation warning"""
+        """Clear all data with streamlined single confirmation and data validation"""
         from tkinter import messagebox
         
-        # Multi-step confirmation to prevent accidental deletion
-        warning_message = (
-            "⚠️ WARNING: This will permanently delete ALL test data!\n\n"
-            "This action will:\n"
-            "• Delete all logged test results\n"
-            "• Clear the entire history database\n"
-            "• Reset all charts and trends\n\n"
-            "This CANNOT be undone!\n\n"
-            "Are you absolutely sure you want to continue?"
-        )
+        # Check if there's any data to clear first
+        if not self.has_data_to_clear():
+            messagebox.showinfo("No Data", "There is no data to clear.")
+            return
         
-        # First confirmation
-        first_confirm = messagebox.askyesno(
-            "Clear All Data - Confirmation Required", 
-            warning_message,
+        # Single, clear confirmation dialog with high-contrast warning
+        response = messagebox.askyesno(
+            "⚠️ PERMANENT DATA DELETION", 
+            "🗑️ This will PERMANENTLY DELETE all your reef test data.\n\n"
+            "This action cannot be undone!\n\n"
+            "• All test history will be lost\n"
+            "• All charts will be cleared\n"
+            "• Database will be completely wiped\n\n"
+            "Are you sure you want to proceed?",
             icon="warning"
         )
         
-        if not first_confirm:
-            return
-        
-        # Second confirmation for extra safety
-        second_confirm = messagebox.askyesno(
-            "Final Confirmation", 
-            "This is your final chance to cancel.\n\n"
-            "Click YES to permanently delete all data.\n"
-            "Click NO to keep your data safe.",
-            icon="warning"
-        )
-        
-        if not second_confirm:
-            messagebox.showinfo("Cancelled", "Your data is safe. No changes were made.")
-            return
-        
-        # Perform the data deletion
+        if response:  # User clicked Yes
+            # Proceed immediately to data deletion (no second popup)
+            try:
+                success = self.clear_all_data()
+                if success:
+                    # No success popup - just refresh displays
+                    self.refresh_history_display()
+                    self.draw_parameter_graphs()
+                    self.update_clear_button_state()  # Update button state
+                else:
+                    messagebox.showerror("Error", "❌ Could not delete all data.\n\nPlease check the database file permissions.")
+            except Exception as e:
+                messagebox.showerror("Error", f"Database deletion failed: {str(e)}")
+        # If No was clicked, do nothing - no additional message needed
+
+    def has_data_to_clear(self):
+        """Check if there's any data in the database"""
         try:
-            success = self.clear_all_data()
-            if success:
-                messagebox.showinfo(
-                    "Data Cleared", 
-                    "✅ All test data has been successfully deleted.\n\n"
-                    "The application now has a fresh start.\n"
-                    "You can begin logging new test results."
-                )
-                # Refresh the history display to show empty state
-                self.refresh_history_display()
-                # Also refresh trends to clear charts
-                self.draw_parameter_graphs()
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            cursor.execute('SELECT COUNT(*) FROM logs')
+            count = cursor.fetchone()[0]
+            conn.close()
+            return count > 0
+        except Exception:
+            return False  # Assume no data if can't check
+
+    def update_clear_button_state(self):
+        """Update Clear All Data button state based on data availability"""
+        if hasattr(self, 'clear_button'):
+            has_data = self.has_data_to_clear()
+            if has_data:
+                self.clear_button.config(state='normal', bg=self.colors['coral_orange'])
             else:
-                messagebox.showerror(
-                    "Error", 
-                    "❌ Could not delete all data.\n\n"
-                    "Some files may be in use.\n"
-                    "Please close the application and manually delete:\n"
-                    f"{self.db_path}"
-                )
-        except Exception as e:
-            messagebox.showerror(
-                "Error", 
-                f"❌ Error clearing data:\n{str(e)}\n\n"
-                "You may need to manually delete the database file."
-            )
+                self.clear_button.config(state='disabled', bg='#95a5a6')  # Grayed out
 
     def clear_all_data(self):
         """Actually clear all data - internal method"""
@@ -2585,6 +3235,44 @@ RECOMMENDED SCHEDULE{ph_warning}:
             print("🗑️ Clearing all test data...")
             
             # Method 1: Try to drop the table (fastest)
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            cursor.execute('DROP TABLE IF EXISTS logs')
+            cursor.execute('''CREATE TABLE logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp TEXT NOT NULL,
+                parameter TEXT NOT NULL,
+                value REAL NOT NULL
+            )''')
+            conn.commit()
+            conn.close()
+            print("✅ Database table cleared and recreated")
+            return True
+            
+        except Exception as e:
+            print(f"⚠️ Method 1 failed: {e}")
+            
+            # Method 2: Delete the database file
+            try:
+                if os.path.exists(self.db_path):
+                    os.remove(self.db_path)
+                    print("✅ Database file deleted")
+                    
+                    # Reinitialize database
+                    self.setup_database()
+                    print("✅ Database recreated")
+                    return True
+                    
+            except Exception as e2:
+                print(f"⚠️ Method 2 failed: {e2}")
+                messagebox.showerror(
+                    "Error", 
+                    "❌ Could not delete all data.\n\n"
+                    "Some files may be in use.\n"
+                    "Please close the application and manually delete:\n"
+                    f"{self.db_path}"
+                )
+                return False
             try:
                 conn = sqlite3.connect(self.db_path)
                 cursor = conn.cursor()
