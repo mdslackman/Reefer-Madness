@@ -14,9 +14,19 @@ class ReeferMadness:
     
     def __init__(self, root):
         self.root = root
-        self.root.title("Reefer Madness v0.25.0 - Interactive Pro (Improved)")
-        self.root.geometry("720x600")  # Reduced from 900 to 720 (1/5th smaller)
-        self.root.minsize(600, 500)   # Adjusted minimum size proportionally
+        self.root.title("🌊 ReeferMadness v0.26.0 - Ocean Edition")
+        self.root.geometry("720x650")  # Slightly taller for ocean aesthetic
+        self.root.minsize(700, 600)   # Maintain good minimum size
+        self.root.configure(bg='#f0f8ff')  # Seafoam blue background
+        
+        # Set ocean wave as the sole window icon (remove Python feather)
+        try:
+            # Try to set a simple ocean wave icon if available, otherwise use emoji
+            self.root.iconphoto(False, tk.PhotoImage(data=""))  # Remove default icon
+            self.root.wm_iconname("🌊 ReeferMadness")  # Ocean wave for taskbar
+        except:
+            # Fallback to just title without icon
+            pass
         
         # Parameter database - renamed from 'db' for clarity
         self.param_config = {
@@ -270,6 +280,9 @@ class ReeferMadness:
             }
         }
 
+        # Ocean Aesthetic Styling Configuration
+        self.setup_ocean_theme()
+        
         # File paths
         self.log_file = os.path.join(os.path.expanduser("~/Documents/ReeferMadness"), "reef_pro_v25.csv")
         if not os.path.exists(os.path.dirname(self.log_file)): 
@@ -305,20 +318,27 @@ class ReeferMadness:
         # Create notebook and scrollable tabs
         self.notebook = ttk.Notebook(self.root)
         
-        # Create scrollable frames for each tab
+        # Create scrollable frames for each tab with improved scroll behavior
         self.tabs = {}
         self.tab_canvases = {}
         self.tab_scrollbars = {}
         self.tab_frames = {}
         
         for name in ["Action Plan", "Maintenance", "Trends", "History"]:
-            # Create the main tab frame
+            # Create the main tab frame with ocean background
             main_frame = ttk.Frame(self.notebook)
+            main_frame.configure(style='Ocean.TFrame')  # Custom ocean style
             
-            # Create canvas and thicker scrollbar for this tab
-            canvas = tk.Canvas(main_frame)
-            scrollbar = tk.Scrollbar(main_frame, orient="vertical", command=canvas.yview, width=20)  # Thicker scrollbar
+            # Create canvas with ocean background - no gray areas
+            canvas = tk.Canvas(main_frame, 
+                             borderwidth=0, 
+                             highlightthickness=0,
+                             bg=self.colors['seafoam_blue'])  # Explicit ocean background
+            scrollbar = tk.Scrollbar(main_frame, orient="vertical", command=canvas.yview, width=20)
+            
+            # Scrollable frame with explicit ocean background
             scrollable_frame = ttk.Frame(canvas)
+            scrollable_frame.configure(style='Ocean.TFrame')  # Ocean themed frame
             
             # Configure scrolling
             scrollable_frame.bind(
@@ -329,26 +349,8 @@ class ReeferMadness:
             canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
             canvas.configure(yscrollcommand=scrollbar.set)
             
-            # Enhanced mouse wheel scrolling - bind to canvas and main frame
-            def _on_mouse_wheel(event, c=canvas):
-                c.yview_scroll(int(-1*(event.delta/120)), "units")
-                
-            def _on_enter(event, c=canvas):
-                c.focus_set()  # Give canvas focus when mouse enters
-            
-            # Bind mouse wheel events to multiple widgets for better coverage
-            canvas.bind("<MouseWheel>", _on_mouse_wheel)  # Windows
-            canvas.bind("<Button-4>", lambda e, c=canvas: c.yview_scroll(-1, "units"))  # Linux
-            canvas.bind("<Button-5>", lambda e, c=canvas: c.yview_scroll(1, "units"))   # Linux
-            canvas.bind("<Enter>", _on_enter)  # Focus when mouse enters
-            
-            main_frame.bind("<MouseWheel>", _on_mouse_wheel)  # Windows
-            main_frame.bind("<Button-4>", lambda e, c=canvas: c.yview_scroll(-1, "units"))  # Linux  
-            main_frame.bind("<Button-5>", lambda e, c=canvas: c.yview_scroll(1, "units"))   # Linux
-            
-            scrollable_frame.bind("<MouseWheel>", _on_mouse_wheel)  # Windows
-            scrollable_frame.bind("<Button-4>", lambda e, c=canvas: c.yview_scroll(-1, "units"))  # Linux
-            scrollable_frame.bind("<Button-5>", lambda e, c=canvas: c.yview_scroll(1, "units"))   # Linux
+            # Store canvas reference for global scrolling
+            self.tab_canvases[name] = canvas
             
             # Pack canvas and scrollbar
             canvas.pack(side="left", fill="both", expand=True)
@@ -356,7 +358,6 @@ class ReeferMadness:
             
             # Store references
             self.tabs[name] = scrollable_frame  # This is what build functions will use
-            self.tab_canvases[name] = canvas
             self.tab_scrollbars[name] = scrollbar
             self.tab_frames[name] = main_frame
             
@@ -364,12 +365,38 @@ class ReeferMadness:
             self.notebook.add(main_frame, text=f" {name} ")
         
         self.notebook.pack(expand=True, fill="both")
+        
+        # Enhanced scroll behavior for nested scrollable widgets
+        self.setup_enhanced_scroll_behavior()
+        
+        # Global scroll binding - redirect all scroll events to active tab canvas
+        def global_scroll_handler(event):
+            try:
+                # Get current active tab
+                current_tab = self.notebook.tab(self.notebook.select(), "text").strip()
+                if current_tab in self.tab_canvases:
+                    canvas = self.tab_canvases[current_tab]
+                    canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+                    return "break"  # Prevent further propagation
+            except:
+                pass
+        
+        # Bind global scroll to root window
+        self.root.bind_all('<MouseWheel>', global_scroll_handler)
+        self.root.bind_all('<Button-4>', lambda e: global_scroll_handler(type('MockEvent', (), {'delta': 120})()))
+        self.root.bind_all('<Button-5>', lambda e: global_scroll_handler(type('MockEvent', (), {'delta': -120})()))
 
         # Build all tabs
         self.build_action_plan()
         self.build_maintenance()
         self.build_trends()
         self.build_history()
+        
+        # Unbind mouse wheel from all comboboxes to prevent accidental parameter changes
+        self.unbind_combobox_scroll()
+        
+        # Apply nuclear ocean theme to eliminate any remaining gray widgets
+        self.apply_nuclear_ocean_theme()
         
         # Set up event traces
         self.setup_event_traces()
@@ -384,6 +411,134 @@ class ReeferMadness:
         # Initialize UI
         self.sync_action_ui()
         self.sync_maintenance_ui()  # Add this missing call
+        
+        # Set window constraints to prevent expanding beyond content
+        self.set_window_constraints()
+        
+        # Set up clean exit handling to prevent zombie processes
+        self.setup_clean_exit()
+    
+    def setup_clean_exit(self):
+        """Set up comprehensive exit handling to prevent zombie processes and ensure stability"""
+        def on_closing():
+            """Handle application closing with complete resource cleanup and thread termination"""
+            try:
+                print("🌊 Initiating ocean-clean exit sequence...")
+                
+                # 1. Stop all timers and cancel scheduled tasks
+                try:
+                    if hasattr(self, 'timer_after_id') and self.timer_after_id:
+                        self.root.after_cancel(self.timer_after_id)
+                        self.timer_after_id = None
+                    print("✅ Timers and scheduled tasks canceled")
+                except:
+                    pass
+                
+                # 2. Close all Matplotlib figures to prevent memory leaks
+                try:
+                    import matplotlib.pyplot as plt
+                    plt.close('all')
+                    print("✅ Matplotlib figures closed")
+                except:
+                    pass
+                
+                # 3. Explicitly close all database connections with force
+                try:
+                    if hasattr(self, 'db_path') and os.path.exists(self.db_path):
+                        # Close any open connections
+                        self.close_all_db_connections()
+                        
+                        # Force close any lingering SQLite connections
+                        import gc
+                        for obj in gc.get_objects():
+                            if isinstance(obj, sqlite3.Connection):
+                                try:
+                                    obj.close()
+                                except:
+                                    pass
+                    print("✅ Database connections forcefully closed")
+                except Exception as e:
+                    print(f"Database cleanup warning: {e}")
+                
+                # 4. Terminate any background threads
+                try:
+                    import threading
+                    active_threads = threading.active_count()
+                    if active_threads > 1:  # Main thread + others
+                        print(f"⚠️ {active_threads} threads active, forcing cleanup")
+                        # Note: We don't forcefully kill threads as it's not safe
+                        # The sys.exit() will handle them
+                    print("✅ Thread cleanup initiated")
+                except:
+                    pass
+                
+                # 5. Force garbage collection to clean up resources
+                try:
+                    import gc
+                    collected = gc.collect()
+                    print(f"✅ Garbage collection completed ({collected} objects collected)")
+                except:
+                    pass
+                
+                # 6. Destroy tkinter widgets and quit main loop
+                try:
+                    self.root.quit()     # Exit the main loop
+                    self.root.destroy()  # Destroy all widgets
+                    print("✅ Tkinter resources destroyed")
+                except:
+                    pass
+                
+                print("🌊 Ocean-clean exit sequence completed successfully")
+                
+                # 7. Force system exit to prevent any zombie processes
+                try:
+                    import sys
+                    import os
+                    print("🌊 Forcing system exit to prevent zombies...")
+                    os._exit(0)  # Force exit without cleanup (we already did cleanup)
+                except:
+                    # Final fallback
+                    import sys
+                    sys.exit(0)
+                    
+            except Exception as e:
+                print(f"💥 Error during cleanup: {e}")
+                # Force exit even if cleanup fails
+                try:
+                    import os
+                    os._exit(1)
+                except:
+                    import sys
+                    sys.exit(1)
+        
+        # Set the window close protocol
+        self.root.protocol("WM_DELETE_WINDOW", on_closing)
+        print("🌊 Enhanced clean exit handler with zombie prevention registered")
+    
+    def set_window_constraints(self):
+        """Set window size constraints based on content to prevent empty space expansion"""
+        try:
+            # Update all widgets to calculate proper dimensions
+            self.root.update_idletasks()
+            
+            # Get required dimensions (add some padding for safety)
+            req_width = self.root.winfo_reqwidth() + 50
+            req_height = self.root.winfo_reqheight() + 50
+            
+            # Set maximum size to prevent expanding beyond content
+            # Still allow shrinking for smaller screens
+            max_width = max(req_width, 800)  # Minimum reasonable width
+            max_height = max(req_height, 700)  # Minimum reasonable height
+            
+            self.root.maxsize(max_width, max_height)
+            
+            # Also set a reasonable minimum size
+            self.root.minsize(700, 600)
+            
+        except Exception as e:
+            # If constraint setting fails, continue normally
+            print(f"Window constraint setting failed: {e}")
+            pass
 
     def load_tank_volume(self):
         """Load saved tank volume from preferences file, default to 0"""
@@ -399,15 +554,20 @@ class ReeferMadness:
         return "0"  # Default to 0 instead of 220
 
     def save_tank_volume(self, *args):
-        """Save tank volume to preferences file whenever it changes"""
+        """Save tank volume to preferences file only when manually entered by user"""
         try:
             volume_str = self.tank_volume.get().strip()
-            if volume_str and float(volume_str) >= 0:  # Only save valid positive numbers
-                prefs_file = os.path.join(os.path.expanduser("~/Documents/ReeferMadness"), "preferences.txt")
-                with open(prefs_file, 'w') as f:
-                    f.write(volume_str)
-        except (ValueError, IOError):
-            pass  # Ignore errors during saving
+            if volume_str and volume_str != "" and volume_str != "0":  # Only save if not empty and not default 0
+                volume_float = float(volume_str)
+                if volume_float > 0:  # Only save positive numbers
+                    prefs_file = os.path.join(os.path.expanduser("~/Documents/ReeferMadness"), "preferences.txt")
+                    os.makedirs(os.path.dirname(prefs_file), exist_ok=True)
+                    
+                    with open(prefs_file, 'w') as f:
+                        f.write(volume_str)
+                    print(f"✅ Tank volume saved: {volume_str}")
+        except (ValueError, IOError) as e:
+            print(f"Could not save tank volume: {e}")
 
     def clear_daily_log_on_startup(self):
         """Clear daily log input fields on app startup (session-only data)"""
@@ -440,6 +600,351 @@ class ReeferMadness:
         
         # Note: Tank volume IS NOT cleared - it persists across sessions
         # Note: Action Plan and Consumption values are also cleared automatically since they use StringVar() without persistence
+
+    def apply_nuclear_ocean_theme(self):
+        """Nuclear Option: Recursively force ocean theme on ALL widgets to eliminate gray patchwork"""
+        def recursive_ocean_styling(widget):
+            try:
+                widget_class = widget.winfo_class()
+                widget_type = type(widget).__name__
+                
+                # Skip buttons and input fields (they have their own styling)
+                skip_widgets = ['Button', 'Entry', 'Text', 'Scrollbar', 'Scale', 'Spinbox']
+                
+                if widget_class not in skip_widgets and widget_type not in skip_widgets:
+                    # Force ocean background on labels, frames, checkbuttons, radiobuttons
+                    if hasattr(widget, 'configure'):
+                        try:
+                            if widget_class in ['Label', 'Frame', 'Checkbutton', 'Radiobutton', 'LabelFrame']:
+                                widget.configure(bg=self.colors['seafoam_blue'])
+                                
+                                # Also set foreground for text widgets
+                                if widget_class in ['Label', 'Checkbutton', 'Radiobutton']:
+                                    widget.configure(fg=self.colors['deep_ocean_blue'])
+                                    
+                                print(f"🌊 Forced ocean theme on {widget_class}: {widget_type}")
+                        except tk.TclError:
+                            # Some widgets might not support bg/fg options
+                            pass
+                
+                # Recursively apply to all children
+                for child in widget.winfo_children():
+                    recursive_ocean_styling(child)
+                    
+            except Exception as e:
+                # Continue even if some widget fails
+                pass
+        
+        # Apply to entire application starting from root
+        recursive_ocean_styling(self.root)
+        print("🌊 Nuclear ocean theme applied to all widgets")
+
+    def setup_ocean_theme(self):
+        """Configure ocean-inspired aesthetic with comprehensive color sync and wave-style headers"""
+        # Ocean Color Palette
+        self.colors = {
+            'seafoam_blue': '#f0f8ff',      # Light seafoam background
+            'deep_navy': '#1e3d59',         # Deep navy headers
+            'deep_ocean_blue': '#1e3d59',   # Deep ocean blue for headers
+            'cloud_white': '#ffffff',       # Pure white text
+            'ocean_blue': '#2980b9',        # Ocean blue accents
+            'coral_orange': '#e74c3c',      # Coral red for warnings
+            'sea_green': '#27ae60',         # Sea green for success
+            'pearl_gray': '#ecf0f1',        # Pearl gray for subtle elements
+            'deep_sea': '#0f3460',          # Deep sea for graphs
+            'wave_blue': '#3498db',         # Wave blue for interactive elements
+            'transparent_blue': '#3498db40', # Semi-transparent blue
+            'waterline_blue': '#e6f3ff',    # Slightly darker blue for waterline effects
+        }
+        
+        # Configure main window background - eliminate all gray
+        self.root.configure(bg=self.colors['seafoam_blue'])
+        
+        # Configure ttk styles for complete ocean transformation
+        style = ttk.Style()
+        
+        # Configure notebook (tab container) styling - complete background sync
+        style.configure('TNotebook', 
+                       background=self.colors['seafoam_blue'],  # Force seafoam blue background
+                       borderwidth=0,
+                       relief='flat')
+        
+        # Tab styling with professional contrast and zero gray
+        style.configure('TNotebook.Tab',
+                       background=self.colors['seafoam_blue'],  # Ocean background for inactive tabs
+                       foreground=self.colors['deep_navy'],     # Deep navy text
+                       padding=[20, 12],
+                       borderwidth=1,
+                       relief='flat',
+                       focuscolor='none',  # Remove dotted focus outline
+                       font=('Arial', 10, 'bold'))
+        
+        # Professional tab contrast with better text visibility
+        style.map('TNotebook.Tab',
+                 background=[('selected', self.colors['deep_navy']),      # Deep navy for selected
+                            ('active', self.colors['coral_orange']),      # Coral hover state
+                            ('!selected', self.colors['seafoam_blue'])],   # Seafoam for inactive
+                 foreground=[('selected', self.colors['wave_blue']),      # Bright blue text on selected (not white)
+                            ('active', self.colors['deep_navy']),         # Deep navy text on coral hover
+                            ('!selected', self.colors['deep_navy'])])      # Navy text on inactive
+        
+        # Ocean frame styling - complete background sync
+        style.configure('TFrame',
+                       background=self.colors['seafoam_blue'],
+                       borderwidth=0,
+                       relief='flat')
+        
+        # Custom Ocean frame style for explicit ocean theming
+        style.configure('Ocean.TFrame',
+                       background=self.colors['seafoam_blue'],
+                       borderwidth=0,
+                       relief='flat')
+        
+        # Wave-style labelframe styling (heavy ocean frame appearance)
+        style.configure('TLabelframe',
+                       background=self.colors['seafoam_blue'],
+                       borderwidth=3,  # Heavy frame look
+                       relief='solid',  # Solid border style
+                       bordercolor=self.colors['deep_navy'])  # Deep navy borders
+        
+        style.configure('TLabelframe.Label',
+                       background=self.colors['deep_navy'],  # Deep navy header background
+                       foreground=self.colors['cloud_white'],  # White text on navy
+                       font=('Arial', 11, 'bold'),  # Bold titles
+                       padding=[15, 8])  # Generous padding for professional look
+        
+        # Ocean-themed entry styling
+        style.configure('TEntry',
+                       fieldbackground=self.colors['cloud_white'],  # White background, not gray
+                       borderwidth=1,
+                       relief='flat',
+                       bordercolor=self.colors['ocean_blue'],
+                       font=('Arial', 9))
+        
+        # Ocean combobox styling
+        style.configure('TCombobox',
+                       fieldbackground=self.colors['cloud_white'],  # White background
+                       borderwidth=1,
+                       relief='flat',
+                       bordercolor=self.colors['ocean_blue'],
+                       arrowcolor=self.colors['deep_ocean_blue'],
+                       font=('Arial', 9))
+        
+        # Ocean radiobutton styling - force ocean background
+        style.configure('TRadiobutton',
+                       background=self.colors['seafoam_blue'],
+                       foreground=self.colors['deep_ocean_blue'],
+                       font=('Arial', 9, 'bold'),  # Bolder font
+                       focuscolor='none',
+                       borderwidth=0)
+        
+        # Ocean checkbutton styling - force ocean background
+        style.configure('TCheckbutton',
+                       background=self.colors['seafoam_blue'],
+                       foreground=self.colors['deep_ocean_blue'],
+                       font=('Arial', 9, 'bold'),  # Bolder font
+                       focuscolor='none',
+                       borderwidth=0)
+        
+        # Ocean label styling - force ocean background
+        style.configure('TLabel',
+                       background=self.colors['seafoam_blue'],
+                       foreground=self.colors['deep_ocean_blue'],
+                       font=('Arial', 9, 'bold'))  # Bolder font
+        
+        # Configure all tkinter (not ttk) widgets to use ocean theme
+        # This handles tk.Label, tk.Checkbutton, tk.Radiobutton that don't use ttk styles
+        self.root.option_add('*Label.background', self.colors['seafoam_blue'])
+        self.root.option_add('*Label.foreground', self.colors['deep_ocean_blue'])
+        self.root.option_add('*Checkbutton.background', self.colors['seafoam_blue'])
+        self.root.option_add('*Checkbutton.foreground', self.colors['deep_ocean_blue'])
+        self.root.option_add('*Radiobutton.background', self.colors['seafoam_blue'])
+        self.root.option_add('*Radiobutton.foreground', self.colors['deep_ocean_blue'])
+        self.root.option_add('*Frame.background', self.colors['seafoam_blue'])
+        
+        print("🌊 Complete ocean theme with comprehensive widget styling configured")
+
+    def create_wave_header_frame(self, parent, title_text, padding=15):
+        """Create wave-style header frame with waterline effect and floating appearance"""
+        # Main container with extra padding for floating bubble effect
+        container = ttk.LabelFrame(parent, text=f" {title_text} ", padding=padding)
+        container.configure(style='TLabelframe')
+        container.pack(fill="x", padx=25, pady=12)  # Increased margins for floating effect
+        
+        # Add waterline separator effect below header (inside the frame)
+        waterline = tk.Frame(container, height=2, bg=self.colors['waterline_blue'])
+        waterline.pack(fill="x", pady=(0, 10))  # Space below the waterline
+        
+        return container
+
+    def create_ocean_button(self, parent, text, command, bg_color=None, width=None):
+        """Create ocean-themed button with modern styling"""
+        if bg_color is None:
+            bg_color = self.colors['ocean_blue']
+            
+        button = tk.Button(
+            parent,
+            text=text,
+            command=command,
+            bg=bg_color,
+            fg=self.colors['cloud_white'],
+            font=('Arial', 9, 'bold'),
+            relief='flat',
+            borderwidth=0,
+            cursor='hand2',
+            activebackground=self.colors['wave_blue'],
+            activeforeground=self.colors['cloud_white']
+        )
+        
+        if width:
+            button.configure(width=width)
+            
+        # Add hover effects
+        def on_enter(e):
+            button.configure(bg=self.colors['wave_blue'])
+        
+        def on_leave(e):
+            button.configure(bg=bg_color)
+            
+        button.bind("<Enter>", on_enter)
+        button.bind("<Leave>", on_leave)
+        
+        return button
+
+    def setup_enhanced_scroll_behavior(self):
+        """Setup enhanced scroll behavior for nested scrollable widgets"""
+        def create_smart_scroll_handler(canvas, scrollable_widget):
+            """Create a smart scroll handler that prioritizes widget scrolling"""
+            def smart_scroll(event):
+                # Check if the scrollable widget can still scroll in the requested direction
+                try:
+                    if hasattr(scrollable_widget, 'yview'):
+                        top, bottom = scrollable_widget.yview()
+                        
+                        # Determine scroll direction
+                        scroll_up = event.delta > 0 if hasattr(event, 'delta') else event.num == 4
+                        
+                        if scroll_up and top > 0:
+                            # Widget can scroll up, let it handle the event
+                            scrollable_widget.yview_scroll(-1, "units")
+                            return "break"
+                        elif not scroll_up and bottom < 1:
+                            # Widget can scroll down, let it handle the event  
+                            scrollable_widget.yview_scroll(1, "units")
+                            return "break"
+                        else:
+                            # Widget is at limit, let main canvas handle scrolling
+                            if hasattr(event, 'delta'):
+                                canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+                            else:
+                                if event.num == 4:
+                                    canvas.yview_scroll(-1, "units")
+                                elif event.num == 5:
+                                    canvas.yview_scroll(1, "units")
+                            return "break"
+                except:
+                    # Fallback to main canvas scrolling
+                    try:
+                        if hasattr(event, 'delta'):
+                            canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+                        else:
+                            if event.num == 4:
+                                canvas.yview_scroll(-1, "units")
+                            elif event.num == 5:
+                                canvas.yview_scroll(1, "units")
+                    except:
+                        pass
+                
+                return "break"
+            
+            return smart_scroll
+        
+        # Apply enhanced scrolling to text widgets when they're created
+        self.enhanced_scroll_widgets = []
+        print("🌊 Enhanced scroll behavior configured")
+
+    def apply_enhanced_scroll_to_text_widget(self, text_widget):
+        """Apply enhanced scroll behavior to text widgets to prevent jarring simultaneous scrolling"""
+        def enhanced_text_scroll(event):
+            try:
+                # Get the current view of the text widget
+                top, bottom = text_widget.yview()
+                
+                # Determine scroll direction
+                if hasattr(event, 'delta'):
+                    scroll_up = event.delta > 0
+                    scroll_amount = int(-1 * (event.delta / 120))
+                else:
+                    scroll_up = event.num == 4
+                    scroll_amount = -1 if scroll_up else 1
+                
+                # Check if text widget can scroll in requested direction
+                if scroll_up and top > 0:
+                    # Text widget can scroll up
+                    text_widget.yview_scroll(-1, "units")
+                    return "break"
+                elif not scroll_up and bottom < 1:
+                    # Text widget can scroll down  
+                    text_widget.yview_scroll(1, "units")
+                    return "break"
+                else:
+                    # Text widget is at limit, let the main app scroll
+                    # Find the current tab canvas
+                    current_tab = self.notebook.tab(self.notebook.select(), "text").strip()
+                    if current_tab in self.tab_canvases:
+                        canvas = self.tab_canvases[current_tab]
+                        canvas.yview_scroll(scroll_amount, "units")
+                    return "break"
+                    
+            except Exception as e:
+                print(f"Enhanced scroll error: {e}")
+                return "break"
+        
+        # Bind the enhanced scroll handler
+        text_widget.bind("<MouseWheel>", enhanced_text_scroll, "+")
+        text_widget.bind("<Button-4>", enhanced_text_scroll, "+")
+        text_widget.bind("<Button-5>", enhanced_text_scroll, "+")
+        
+        print(f"🌊 Enhanced scroll applied to text widget")
+
+    def apply_enhanced_scroll_to_widget(self, widget, canvas):
+        """Apply enhanced scroll behavior to a specific widget"""
+        try:
+            smart_handler = self.setup_enhanced_scroll_behavior()
+            
+            # Bind enhanced scroll events
+            widget.bind("<MouseWheel>", lambda e: smart_handler(e, canvas, widget), "+")
+            widget.bind("<Button-4>", lambda e: smart_handler(e, canvas, widget), "+")  
+            widget.bind("<Button-5>", lambda e: smart_handler(e, canvas, widget), "+")
+            
+            self.enhanced_scroll_widgets.append(widget)
+            print(f"🌊 Enhanced scroll applied to {type(widget).__name__}")
+        except Exception as e:
+            print(f"⚠️ Could not apply enhanced scroll to widget: {e}")
+
+    def unbind_combobox_scroll(self):
+        """Unbind mouse wheel from all comboboxes to prevent accidental parameter changes while scrolling"""
+        def unbind_widget_recursively(widget):
+            try:
+                if isinstance(widget, ttk.Combobox):
+                    # Unbind mouse wheel events from comboboxes
+                    widget.unbind("<MouseWheel>")
+                    widget.unbind("<Button-4>") 
+                    widget.unbind("<Button-5>")
+                    # Also prevent focus-based scrolling
+                    widget.bind("<MouseWheel>", lambda e: "break")
+                    widget.bind("<Button-4>", lambda e: "break")
+                    widget.bind("<Button-5>", lambda e: "break")
+                    
+                # Recursively check children
+                for child in widget.winfo_children():
+                    unbind_widget_recursively(child)
+            except:
+                pass  # Some widgets might not support these operations
+        
+        # Apply to all tabs
+        for tab_frame in self.tabs.values():
+            unbind_widget_recursively(tab_frame)
 
     def setup_event_traces(self):
         """Set up all variable traces for UI synchronization"""
@@ -646,89 +1151,118 @@ class ReeferMadness:
             self.cons_alk_frame.pack_forget()
 
     def build_action_plan(self):
-        """Build the Action Plan tab with safety calculator"""
+        """Build the Action Plan tab with wave-style headers and floating appearance"""
         frame = self.tabs["Action Plan"]
         
-        # System Configuration
-        config_frame = ttk.LabelFrame(frame, text=" 1. System Configuration ", padding=10)
-        config_frame.pack(fill="x", padx=20, pady=5)
+        # System Configuration with clean header (no icon)
+        config_frame = self.create_wave_header_frame(frame, "System Configuration")
         
-        tk.Label(config_frame, text="Tank Volume:").pack(side="left")
-        volume_entry = tk.Entry(config_frame, textvariable=self.tank_volume, width=8)
+        tk.Label(config_frame, text="Tank Volume:", font=('Arial', 9, 'bold'), 
+                bg=self.colors['seafoam_blue'], fg=self.colors['deep_ocean_blue']).pack(side="left")
+        volume_entry = tk.Entry(config_frame, textvariable=self.tank_volume, width=8,
+                               bg=self.colors['cloud_white'], fg=self.colors['deep_ocean_blue'])
         volume_entry.pack(side="left", padx=5)
         
         ttk.Radiobutton(config_frame, text="Gallons", variable=self.volume_unit, value="Gallons").pack(side="left", padx=5)
         ttk.Radiobutton(config_frame, text="Liters", variable=self.volume_unit, value="Liters").pack(side="left")
 
-        # Product Selection
-        product_frame = ttk.LabelFrame(frame, text=" 2. Product Selection ", padding=10)
-        product_frame.pack(fill="x", padx=20, pady=5)
+        # Product Selection with clean header (no icon)
+        product_frame = self.create_wave_header_frame(frame, "Product Selection")
         
-        tk.Label(product_frame, text="Parameter:").pack(side="left")
+        tk.Label(product_frame, text="Parameter:", font=('Arial', 9, 'bold'),
+                bg=self.colors['seafoam_blue'], fg=self.colors['deep_ocean_blue']).pack(side="left")
         param_combo = ttk.Combobox(product_frame, textvariable=self.selected_parameter, 
                                   values=list(self.param_config.keys()), state="readonly", width=12)
         param_combo.pack(side="left", padx=5)
         
-        tk.Label(product_frame, text="Brand:").pack(side="left", padx=(20,5))
+        tk.Label(product_frame, text="Brand:", font=('Arial', 9, 'bold'),
+                bg=self.colors['seafoam_blue'], fg=self.colors['deep_ocean_blue']).pack(side="left", padx=(20,5))
         self.brand_combo = ttk.Combobox(product_frame, textvariable=self.selected_brand, 
                                        state="readonly", width=15)
         self.brand_combo.pack(side="left", padx=5)
         
         # Custom concentration frame (shown when Custom brand selected)
         self.custom_frame = ttk.Frame(product_frame)
-        tk.Label(self.custom_frame, text="Concentration:").pack(side="left", padx=(10,5))
-        tk.Entry(self.custom_frame, textvariable=self.custom_strength, width=8).pack(side="left")
-        self.custom_label = tk.Label(self.custom_frame, text="unit")
+        self.custom_frame.configure(style='Ocean.TFrame')
+        tk.Label(self.custom_frame, text="Concentration:", font=('Arial', 9, 'bold'),
+                bg=self.colors['seafoam_blue'], fg=self.colors['deep_ocean_blue']).pack(side="left", padx=(10,5))
+        custom_entry = tk.Entry(self.custom_frame, textvariable=self.custom_strength, width=8,
+                               bg=self.colors['cloud_white'], fg=self.colors['deep_ocean_blue'])
+        custom_entry.pack(side="left")
+        self.custom_label = tk.Label(self.custom_frame, text="unit", font=('Arial', 9, 'bold'),
+                                    bg=self.colors['seafoam_blue'], fg=self.colors['deep_ocean_blue'])
         self.custom_label.pack(side="left", padx=(5,0))
 
-        # Safety Calculator - Responsive multi-row layout
-        calc_frame = ttk.LabelFrame(frame, text=" 3. Safety Calculator ", padding=10)
-        calc_frame.pack(fill="x", padx=20, pady=5)
+        # Safety Calculator with clean header (no icon)
+        calc_frame = self.create_wave_header_frame(frame, "Safety Calculator")
         
         # Row 1: Current and Target Values
         calc_row1 = ttk.Frame(calc_frame)
-        calc_row1.pack(fill="x", pady=2)
+        calc_row1.configure(style='Ocean.TFrame')
+        calc_row1.pack(fill="x", pady=5)
         
-        tk.Label(calc_row1, text="Current Value:").pack(side="left")
-        tk.Entry(calc_row1, textvariable=self.current_value, width=10).pack(side="left", padx=5)
+        tk.Label(calc_row1, text="Current Value:", font=('Arial', 9, 'bold'),
+                bg=self.colors['seafoam_blue'], fg=self.colors['deep_ocean_blue']).pack(side="left")
+        current_entry = tk.Entry(calc_row1, textvariable=self.current_value, width=10,
+                                bg=self.colors['cloud_white'], fg=self.colors['deep_ocean_blue'])
+        current_entry.pack(side="left", padx=5)
         
-        tk.Label(calc_row1, text="Target Value:").pack(side="left", padx=(20,5))
-        tk.Entry(calc_row1, textvariable=self.target_value, width=10).pack(side="left", padx=5)
+        tk.Label(calc_row1, text="Target Value:", font=('Arial', 9, 'bold'),
+                bg=self.colors['seafoam_blue'], fg=self.colors['deep_ocean_blue']).pack(side="left", padx=(20,5))
+        target_entry = tk.Entry(calc_row1, textvariable=self.target_value, width=10,
+                               bg=self.colors['cloud_white'], fg=self.colors['deep_ocean_blue'])
+        target_entry.pack(side="left", padx=5)
         
-        tk.Label(calc_row1, text="pH (optional):").pack(side="left", padx=(20,5))
-        tk.Entry(calc_row1, textvariable=self.ph_value, width=8).pack(side="left", padx=5)
+        tk.Label(calc_row1, text="pH (optional):", font=('Arial', 9, 'bold'),
+                bg=self.colors['seafoam_blue'], fg=self.colors['deep_ocean_blue']).pack(side="left", padx=(20,5))
+        ph_entry = tk.Entry(calc_row1, textvariable=self.ph_value, width=8,
+                           bg=self.colors['cloud_white'], fg=self.colors['deep_ocean_blue'])
+        ph_entry.pack(side="left", padx=5)
         
         # Row 2: Alkalinity units (only shown for alkalinity parameter)
         calc_row2 = ttk.Frame(calc_frame)
-        calc_row2.pack(fill="x", pady=2)
+        calc_row2.configure(style='Ocean.TFrame')
+        calc_row2.pack(fill="x", pady=5)
         
         self.alk_unit_frame = ttk.Frame(calc_row2)
-        tk.Label(self.alk_unit_frame, text="Alkalinity Unit:").pack(side="left")
+        self.alk_unit_frame.configure(style='Ocean.TFrame')
+        tk.Label(self.alk_unit_frame, text="Alkalinity Unit:", font=('Arial', 9, 'bold'),
+                bg=self.colors['seafoam_blue'], fg=self.colors['deep_ocean_blue']).pack(side="left")
         ttk.Radiobutton(self.alk_unit_frame, text="dKH", variable=self.alkalinity_unit, value="dKH").pack(side="left", padx=5)
         ttk.Radiobutton(self.alk_unit_frame, text="ppm", variable=self.alkalinity_unit, value="ppm").pack(side="left")
 
-        # Calculate button and results
-        tk.Button(frame, text="GENERATE SAFETY PLAN", command=self.calculate_dosing_plan, 
-                 bg="#2c3e50", fg="white", font=('Arial', 10, 'bold')).pack(pady=15)
+        # Calculate button with ocean styling and floating appearance
+        button_frame = ttk.Frame(frame)
+        button_frame.configure(style='Ocean.TFrame')
+        button_frame.pack(pady=20)
         
-        # Results with scrollable text widget for long results
+        self.create_ocean_button(button_frame, "GENERATE SAFETY PLAN", 
+                                 self.calculate_dosing_plan).pack()
+
+        # Results with ocean-themed text widget
         result_frame = ttk.Frame(frame)
-        result_frame.pack(fill="both", expand=True, padx=20, pady=(0,10))
+        result_frame.configure(style='Ocean.TFrame')
+        result_frame.pack(fill="both", expand=True, padx=25, pady=(0,10))
         
-        self.result_text = tk.Text(result_frame, height=8, wrap=tk.WORD, font=("Arial", 10))
+        self.result_text = tk.Text(result_frame, height=8, wrap=tk.WORD, font=("Arial", 10),
+                                  bg=self.colors['cloud_white'], fg=self.colors['deep_ocean_blue'],
+                                  relief='flat', borderwidth=1, 
+                                  highlightbackground=self.colors['ocean_blue'])
         result_scrollbar = ttk.Scrollbar(result_frame, orient="vertical", command=self.result_text.yview)
         self.result_text.configure(yscrollcommand=result_scrollbar.set)
+        
+        # Apply enhanced scroll behavior to this text widget
+        self.apply_enhanced_scroll_to_text_widget(self.result_text)
         
         self.result_text.pack(side="left", fill="both", expand=True)
         result_scrollbar.pack(side="right", fill="y")
         
-        # Initial message
-        self.result_text.insert("1.0", "Enter values above and click 'Generate Safety Plan' to see dosing recommendations.")
+        # Initial message with ocean theme
+        self.result_text.insert("1.0", "🌊 Enter values above and click 'Generate Safety Plan' to see dosing recommendations with ocean-grade precision.")
         self.result_text.config(state="disabled")  # Make read-only
         
-        # Tab Explanation Section - MOVED TO BOTTOM
-        help_frame = ttk.LabelFrame(frame, text=" ℹ️ How to Use Action Plan ", padding=10)
-        help_frame.pack(fill="x", padx=20, pady=(10,20))
+        # Tab Explanation Section - MOVED TO BOTTOM (clean header, no icon)
+        help_frame = self.create_wave_header_frame(frame, "How to Use Action Plan")
         
         help_text = ("This tab calculates safe dosing schedules to change your reef parameters. "
                     "Enter your tank volume, select the parameter you want to adjust, "
@@ -736,23 +1270,12 @@ class ReeferMadness:
                     "The safety calculator will create a multi-day dosing plan that prevents shocking your corals.")
         
         tk.Label(help_frame, text=help_text, font=("Arial", 9), 
-                justify="left", wraplength=520, fg="#2c3e50").pack(anchor="w")
+                justify="left", wraplength=520, fg=self.colors['deep_ocean_blue'], 
+                bg=self.colors['seafoam_blue']).pack(anchor="w")
 
     def build_maintenance(self):
         """Build the Maintenance tab with consumption tracker and logging"""
         frame = self.tabs["Maintenance"]
-        
-        # Tab Explanation Section
-        help_frame = ttk.LabelFrame(frame, text=" ℹ️ How to Use Maintenance ", padding=10)
-        help_frame.pack(fill="x", padx=20, pady=5)
-        
-        help_text = ("Track your reef's consumption rates and log daily test results. "
-                    "The consumption calculator helps you understand how much your tank uses each day "
-                    "by comparing start/end values over time. The daily test log keeps a record of "
-                    "all your measurements for trend analysis.")
-        
-        tk.Label(help_frame, text=help_text, font=("Arial", 9), 
-                justify="left", wraplength=520, fg="#2c3e50").pack(anchor="w")
         
         # Combined Consumption Rate Calculator with Tank Configuration
         cons_frame = ttk.LabelFrame(frame, text=" Consumption Rate Calculator ", padding=15)
@@ -817,9 +1340,9 @@ class ReeferMadness:
         ttk.Radiobutton(self.cons_alk_frame, text="dKH", variable=self.cons_alk_unit, value="dKH").pack(side="left", padx=5)
         ttk.Radiobutton(self.cons_alk_frame, text="ppm", variable=self.cons_alk_unit, value="ppm").pack(side="left", padx=5)
 
-        # Calculate button positioned closer to units (not far right)
-        tk.Button(calc_row, text="CALCULATE CONSUMPTION RATE", command=self.calculate_consumption_rate, 
-                 bg="#16a085", fg="white", font=("Arial", 10, "bold")).pack(side="left", padx=20)
+        # Calculate button positioned closer to units (not far right) - ocean styling
+        self.create_ocean_button(calc_row, "CALCULATE CONSUMPTION RATE", 
+                                 self.calculate_consumption_rate).pack(side="left", padx=20)
 
         # Daily Logging Section (unchanged)
         log_frame = ttk.LabelFrame(frame, text=" Daily Test Log ", padding=10)
@@ -856,32 +1379,53 @@ class ReeferMadness:
                 unit_text = self.param_config[param]["unit"]
                 tk.Label(row_frame, text=unit_text, width=8, anchor="w").pack(side="left")
         
-        tk.Button(log_frame, text="SAVE TO LOG", command=self.save_test_entry, 
-                 bg="#27ae60", fg="white", font=('Arial', 10, 'bold')).pack(pady=15)
+        # Save button with ocean theme
+        self.save_button = self.create_ocean_button(log_frame, "💾 SAVE TO LOG", 
+                                                   self.save_test_entry, self.colors['sea_green'])
+        self.save_button.pack(pady=15)
+        
+        # Add traces to daily log variables to reset save button when user types
+        for param, var in self.log_variables.items():
+            var.trace_add("write", self.reset_save_button_on_input)
+        
+        # Also trace alkalinity unit changes
+        self.log_alk_unit.trace_add("write", self.reset_save_button_on_input)
+        
+        # Tab Explanation Section - MOVED TO BOTTOM (clean header, no icon)
+        help_frame = self.create_wave_header_frame(frame, "How to Use Maintenance")
+        
+        help_text = ("Track your reef's consumption rates and log daily test results. "
+                    "The consumption calculator helps you understand how much your tank uses each day "
+                    "by comparing start/end values over time. The daily test log keeps a record of "
+                    "all your measurements for trend analysis.")
+        
+        tk.Label(help_frame, text=help_text, font=("Arial", 9), 
+                justify="left", wraplength=520, fg="#2c3e50").pack(anchor="w")
 
     def build_trends(self):
         """Build the Trends tab with normal layout (no individual scrolling)"""
         frame = self.tabs["Trends"]
         
-        # Refresh button at top
-        tk.Button(frame, text="REFRESH GRAPHS", command=self.draw_parameter_graphs, 
-                 bg="#3498db", fg="white", font=('Arial', 10, 'bold')).pack(pady=10)
+        # Refresh button with ocean styling
+        self.create_ocean_button(frame, "REFRESH GRAPHS", self.draw_parameter_graphs, 
+                                 self.colors['wave_blue']).pack(pady=10)
         
         # Chart container (no individual scrolling - let tab handle it)
         self.chart_frame = ttk.Frame(frame)
         self.chart_frame.pack(fill="both", expand=True, padx=20, pady=10)
         
-        # Tab Explanation Section - MOVED TO BOTTOM
-        help_frame = ttk.LabelFrame(frame, text=" ℹ️ How to Use Trends ", padding=10)
-        help_frame.pack(fill="x", padx=20, pady=(10,20))
+        # Tab Explanation Section - MOVED TO BOTTOM (clean header, no icon)
+        help_frame = self.create_wave_header_frame(frame, "How to Use Trends")
         
-        help_text = ("Visualize your reef parameters over time with automatic trend graphs. "
-                    "Each parameter gets its own chart showing your test results, target ranges (green shading), "
-                    "and ideal values (green line). Use these graphs to spot trends, verify stability, "
-                    "and track the effectiveness of your dosing programs.")
+        help_text = ("View your reef parameter trends over time with professional charts. "
+                    "The green shaded area shows the safe range for each parameter, while the green dashed line "
+                    "shows your optimal target level. You can customize these target lines using the Custom Optimal Levels "
+                    "section below the charts. Data points show your actual test results - the goal is to keep your "
+                    "parameters within the green safe zones for optimal coral health.")
         
         tk.Label(help_frame, text=help_text, font=("Arial", 9), 
-                justify="left", wraplength=520, fg="#2c3e50").pack(anchor="w")
+                justify="left", wraplength=520, fg=self.colors['deep_ocean_blue'], 
+                bg=self.colors['seafoam_blue']).pack(anchor="w")
 
     def build_history(self):
         """Build the History tab with test kit instructions and data management"""
@@ -912,13 +1456,20 @@ class ReeferMadness:
         timer_frame = ttk.Frame(selection_frame)
         timer_frame.pack(side="right", padx=20)
         
-        tk.Label(timer_frame, text="Test Timer:", font=("Arial", 9)).pack()
+        # Test Timer header with ocean theme
+        tk.Label(timer_frame, text="Test Timer:", font=("Arial", 9),
+                bg=self.colors['seafoam_blue'], fg=self.colors['deep_ocean_blue']).pack()
+        
+        # Timer display with ocean theme background
         self.timer_label = tk.Label(timer_frame, text="00:00", font=("Arial", 18, "bold"), 
-                                   fg="#e67e22", cursor="hand2", relief="ridge", bd=2, padx=10, pady=5)
+                                   fg="#e67e22", cursor="hand2", relief="ridge", bd=2, padx=10, pady=5,
+                                   bg=self.colors['seafoam_blue'])  # Ocean background for timer
         self.timer_label.pack()
         self.timer_label.bind("<Button-1>", self.cancel_timer)
         
-        tk.Label(timer_frame, text="Click timer to cancel/reset", font=("Arial", 7), fg="gray").pack()
+        # Timer instruction with ocean theme
+        tk.Label(timer_frame, text="Click timer to cancel/reset", font=("Arial", 7), 
+                fg="#7f8c8d", bg=self.colors['seafoam_blue']).pack()  # Ocean background
 
         # Dynamic checklist area (no individual scrolling)
         self.checklist_frame = ttk.Frame(kit_frame)
@@ -968,26 +1519,37 @@ class ReeferMadness:
         self.context_menu.add_separator()
         self.context_menu.add_command(label="Export to CSV", command=self.export_data_to_csv)
         
-        # Control buttons (simplified - removed delete button since it's in context menu)
+        # Control buttons with ocean theme
         button_frame = ttk.Frame(frame)
         button_frame.pack(fill="x", padx=20, pady=10)
         
-        tk.Button(button_frame, text="EXPORT TO CSV", command=self.export_data_to_csv, 
-                 bg="#8e44ad", fg="white").pack(side="left")
+        self.create_ocean_button(button_frame, "EXPORT TO CSV", self.export_data_to_csv, 
+                                self.colors['ocean_blue']).pack(side="left")
         
-        tk.Button(button_frame, text="REFRESH HISTORY", command=self.refresh_history_display, 
-                 bg="#34495e", fg="white").pack(side="left", padx=10)
+        self.create_ocean_button(button_frame, "REFRESH HISTORY", self.refresh_history_display, 
+                                self.colors['deep_navy']).pack(side="left", padx=10)
+        
+        # Clear All Data button with warning styling (keep clean)
+        self.create_ocean_button(button_frame, "CLEAR ALL DATA", self.clear_all_data_with_confirmation, 
+                                self.colors['coral_orange']).pack(side="left", padx=10)
         
         tk.Label(button_frame, text="💡 Double-click to edit • Right-click for menu", 
-                font=("Arial", 8), fg="gray").pack(side="right")
+                font=("Arial", 8), fg="#7f8c8d", bg=self.colors['seafoam_blue']).pack(side="right")
         
         # Initialize history display
         self.sync_history_kits()
         self.refresh_history_display()
         
-        # Tab Explanation Section - MOVED TO BOTTOM
-        help_frame = ttk.LabelFrame(frame, text=" ℹ️ How to Use History ", padding=10)
-        help_frame.pack(fill="x", padx=20, pady=(10,20))
+        # Database location transparency - show where data is stored
+        db_info_frame = ttk.Frame(frame)
+        db_info_frame.pack(fill="x", padx=20, pady=(5, 10))
+        
+        db_location_text = f"📁 Data stored in: {self.db_path}"
+        tk.Label(db_info_frame, text=db_location_text, font=("Arial", 8), 
+                fg="#7f8c8d", bg="#f0f8ff", anchor="w").pack(anchor="w")
+        
+        # Tab Explanation Section - MOVED TO BOTTOM (clean header, no icon)
+        help_frame = self.create_wave_header_frame(frame, "How to Use History")
         
         help_text = ("Get step-by-step testing instructions for popular reef test kits, complete with built-in timers. "
                     "Choose your parameter and test kit brand for detailed procedures based on manufacturer manuals. "
@@ -1006,7 +1568,7 @@ class ReeferMadness:
             self.hist_kit.set(kits[0])
 
     def draw_test_checklist(self, *args):
-        """Draw the dynamic test kit checklist with checkboxes and strikethrough"""
+        """Draw the dynamic test kit checklist with clickable labels and strikethrough"""
         # Clear existing checklist
         for widget in self.checklist_frame.winfo_children():
             widget.destroy()
@@ -1045,10 +1607,14 @@ class ReeferMadness:
                                     command=lambda idx=i: self.toggle_step_completion(idx))
             checkbox.pack(side="left")
             
-            # Step label that can be modified
+            # Interactive step label that can be clicked to toggle checkbox
             step_label = tk.Label(step_frame, text=full_text, 
-                                 font=('Arial', 9), wraplength=500, justify="left", anchor="w")
+                                 font=('Arial', 9), wraplength=500, justify="left", anchor="w",
+                                 cursor="hand2")  # Hand cursor to indicate clickability
             step_label.pack(side="left", padx=(5,0), fill="x", expand=True, anchor="w")
+            
+            # Bind click event to label to toggle checkbox
+            step_label.bind("<Button-1>", lambda e, idx=i: self.toggle_checkbox_from_label(idx))
             
             # Store label reference
             self.step_labels[i] = step_label
@@ -1072,18 +1638,27 @@ class ReeferMadness:
                     except (ValueError, AttributeError):
                         continue
             
-            # Add timer button if time period found - positioned on the right
+            # Add timer button with ocean styling if time period found
             if timer_minutes and timer_minutes > 0:
                 timer_btn = tk.Button(step_frame, 
-                                    text=f"{timer_minutes} MIN TIMER", 
+                                    text=f"⏱️ {timer_minutes} MIN TIMER", 
                                     command=lambda m=timer_minutes: self.start_simple_timer(m),
                                     bg="#e67e22", fg="white", 
                                     font=("Arial", 8, "bold"),
-                                    relief="raised", bd=2)
+                                    relief="flat", bd=0,
+                                    cursor="hand2",
+                                    activebackground="#d35400")
                 timer_btn.pack(side="right", padx=10)
 
+    def toggle_checkbox_from_label(self, step_index):
+        """Toggle checkbox when label is clicked"""
+        if step_index in self.checkbox_states:
+            current_state = self.checkbox_states[step_index].get()
+            self.checkbox_states[step_index].set(not current_state)
+            self.toggle_step_completion(step_index)
+
     def toggle_step_completion(self, step_index):
-        """Toggle strikethrough when checkbox is clicked"""
+        """Toggle strikethrough when checkbox is clicked or label is clicked"""
         if step_index in self.checkbox_states and step_index in self.step_labels:
             is_checked = self.checkbox_states[step_index].get()
             label = self.step_labels[step_index]
@@ -1373,8 +1948,13 @@ RECOMMENDED SCHEDULE{ph_warning}:
         except Exception as e:
             messagebox.showerror("Calculation Error", f"Please check all inputs.\n\nError: {str(e)}")
 
+    def reset_save_button_on_input(self, *args):
+        """Reset save button when user modifies any input field"""
+        if hasattr(self, 'save_button'):
+            self.save_button.config(text="💾 SAVE TO LOG", bg=self.colors['sea_green'])
+
     def save_test_entry(self):
-        """Save test results to database with proper unit handling"""
+        """Save test results to database with reactive button feedback"""
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
@@ -1418,23 +1998,153 @@ RECOMMENDED SCHEDULE{ph_warning}:
                 conn.close()
                 self.refresh_history_display()
                 
-                # Change button text to show success (no popup)
-                self.save_button.config(text="SAVED", bg="#2ecc71")
+                # Change button text to show success (no popup) - Enhanced with ocean colors
+                self.save_button.config(text="✅ SAVED", bg="#2ecc71")  # Brighter green for success
                 self.root.after(2000, self.reset_save_button)  # Reset after 2 seconds
             else:
                 conn.close()
-                # Change button text to show warning (no popup)
-                self.save_button.config(text="NO DATA", bg="#f39c12")
+                # Change button text to show warning (no popup) - Ocean themed warning
+                self.save_button.config(text="⚠️ NO DATA", bg="#f39c12")
                 self.root.after(2000, self.reset_save_button)  # Reset after 2 seconds
                 
         except Exception as e:
-            # Show error on button instead of popup
-            self.save_button.config(text="ERROR", bg="#e74c3c")
+            # Show error on button instead of popup - Ocean themed error
+            self.save_button.config(text="❌ ERROR", bg=self.colors['coral_orange'])
             self.root.after(2000, self.reset_save_button)  # Reset after 2 seconds
 
     def reset_save_button(self):
-        """Reset save button to original state"""
-        self.save_button.config(text="SAVE TO LOG", bg="#27ae60")
+        """Reset save button to original ocean themed state"""
+        if hasattr(self, 'save_button'):
+            self.save_button.config(text="💾 SAVE TO LOG", bg=self.colors['sea_green'])
+
+    def add_custom_optimal_controls(self):
+        """Add custom optimal level controls below charts for user customization (prevent duplicates)"""
+        # Strong duplicate prevention - check multiple ways
+        if hasattr(self, 'custom_optimal_frame'):
+            try:
+                if self.custom_optimal_frame and self.custom_optimal_frame.winfo_exists():
+                    print("🌊 Custom optimal controls already exist, skipping creation")
+                    return
+            except tk.TclError:
+                # Frame was destroyed, we can recreate
+                pass
+        
+        # Also check if any existing custom optimal sections exist in the Trends tab
+        trends_children = self.tabs["Trends"].winfo_children()
+        for child in trends_children:
+            try:
+                if hasattr(child, 'winfo_children'):
+                    for subchild in child.winfo_children():
+                        if hasattr(subchild, 'cget') and 'Custom Optimal Levels' in str(subchild.cget('text')):
+                            print("🌊 Found existing custom optimal section, skipping creation")
+                            return
+            except:
+                continue
+        
+        # Custom Optimal Levels section
+        self.custom_optimal_frame = self.create_wave_header_frame(self.tabs["Trends"], "Custom Optimal Levels", 15)
+        
+        # Instructions
+        tk.Label(self.custom_optimal_frame, 
+                text="Customize your optimal target lines for each parameter (leave blank to use research defaults):",
+                font=("Arial", 9), fg=self.colors['deep_ocean_blue'], 
+                bg=self.colors['seafoam_blue']).pack(anchor="w", pady=(0,10))
+        
+        # Create custom optimal level inputs for each parameter
+        self.custom_optimal_vars = {}
+        
+        for param in self.param_config.keys():
+            row_frame = ttk.Frame(self.custom_optimal_frame)
+            row_frame.configure(style='Ocean.TFrame')
+            row_frame.pack(fill="x", pady=3)
+            
+            # Parameter label
+            config = self.param_config[param]
+            default_value = config['target']
+            unit = config['unit']
+            
+            # Smart alkalinity unit detection for display
+            if param == "Alkalinity":
+                # Default to ppm for alkalinity (more common for high precision)
+                display_unit = "ppm"
+                display_default = default_value * ReeferMadness.DKH_TO_PPM_FACTOR  # Convert dKH to ppm for display
+                unit_info = f"ppm (default: {display_default:.0f}) - Use high numbers like 150-180"
+            else:
+                display_unit = unit
+                display_default = default_value
+                unit_info = f"{unit} (default: {display_default})"
+            
+            tk.Label(row_frame, text=f"{param}:", width=15, anchor="w", font=('Arial', 9, 'bold'),
+                    bg=self.colors['seafoam_blue'], fg=self.colors['deep_ocean_blue']).pack(side="left")
+            
+            # Custom optimal value entry with unit detection
+            self.custom_optimal_vars[param] = tk.StringVar()
+            custom_entry = tk.Entry(row_frame, textvariable=self.custom_optimal_vars[param], width=10,
+                                   bg=self.colors['cloud_white'], fg=self.colors['deep_ocean_blue'])
+            custom_entry.pack(side="left", padx=5)
+            
+            # Add alkalinity unit detection trace
+            if param == "Alkalinity":
+                self.custom_optimal_vars[param].trace_add("write", self.detect_alkalinity_unit_in_custom)
+            
+            # Unit and default info
+            tk.Label(row_frame, text=unit_info, font=('Arial', 8),
+                    bg=self.colors['seafoam_blue'], fg="#7f8c8d").pack(side="left", padx=5)
+        
+        # Apply custom levels button
+        self.create_ocean_button(self.custom_optimal_frame, "APPLY CUSTOM LEVELS", 
+                                 self.apply_custom_optimal_levels, 
+                                 self.colors['wave_blue']).pack(pady=10)
+
+    def detect_alkalinity_unit_in_custom(self, *args):
+        """Detect if alkalinity value in custom optimal is dKH or ppm"""
+        try:
+            alk_value_str = self.custom_optimal_vars["Alkalinity"].get().strip()
+            if alk_value_str:
+                alk_value = float(alk_value_str)
+                
+                # Auto-detect based on value range
+                if alk_value > 50:  # Likely ppm (120-180 range)
+                    print(f"🌊 Detected alkalinity in ppm: {alk_value}")
+                elif alk_value <= 20:  # Likely dKH (7-12 range)
+                    print(f"🌊 Detected alkalinity in dKH: {alk_value}")
+                    
+        except (ValueError, KeyError):
+            pass  # Invalid input or alkalinity not found
+
+    def apply_custom_optimal_levels(self):
+        """Apply user's custom optimal levels with smart alkalinity unit detection"""
+        try:
+            # Update parameter configuration with custom values
+            for param, var in self.custom_optimal_vars.items():
+                custom_value = var.get().strip()
+                if custom_value:
+                    try:
+                        custom_float = float(custom_value)
+                        if custom_float > 0:  # Only accept positive values
+                            
+                            # Smart alkalinity unit handling
+                            if param == "Alkalinity":
+                                if custom_float > 50:  # Likely ppm (120-180 range)
+                                    # Convert ppm to dKH for internal storage
+                                    target_dkh = custom_float / ReeferMadness.DKH_TO_PPM_FACTOR
+                                    self.param_config[param]['target'] = target_dkh
+                                    print(f"✅ Custom alkalinity set: {custom_float} ppm = {target_dkh:.2f} dKH")
+                                else:  # Likely dKH (7-12 range)
+                                    self.param_config[param]['target'] = custom_float
+                                    print(f"✅ Custom alkalinity set: {custom_float} dKH")
+                            else:
+                                self.param_config[param]['target'] = custom_float
+                                print(f"✅ Custom optimal level set for {param}: {custom_float}")
+                                
+                    except ValueError:
+                        print(f"⚠️ Invalid value for {param}: {custom_value}")
+            
+            # Refresh the graphs to show new optimal lines (without creating new controls)
+            self.draw_parameter_graphs()
+            
+        except Exception as e:
+            print(f"❌ Error applying custom levels: {e}")
 
     def draw_parameter_graphs(self):
         """Draw trend graphs that scale to fit window width with proper scrolling"""
@@ -1473,17 +2183,21 @@ RECOMMENDED SCHEDULE{ph_warning}:
             except:
                 chart_width = 8  # Default fallback
             
-            # Create properly sized subplots that fit the window
+            # Create properly sized subplots that fit the window with ocean theme
             num_params = len(self.param_config)
             min_height_per_chart = 3  # Slightly smaller for better fit
             total_height = min_height_per_chart * num_params
             
+            # Configure matplotlib with centered title and proper styling
+            plt.style.use('default')  # Reset any previous styles
             fig, axes = plt.subplots(num_params, 1, figsize=(chart_width, total_height), 
-                                   constrained_layout=True)
+                                   constrained_layout=True, facecolor='#f0f8ff')  # Seafoam background
             if num_params == 1:
                 axes = [axes]  # Make it a list for consistency
             
-            fig.suptitle('Reef Parameter Trends', fontsize=14, fontweight='bold')
+            # Centered title with proper positioning
+            fig.suptitle('Reef Parameter Trends', fontsize=14, fontweight='bold', 
+                        color='#1e3d59', y=0.98)  # Slightly higher positioning for better centering
             
             for i, param in enumerate(self.param_config.keys()):
                 ax = axes[i]
@@ -1516,39 +2230,66 @@ RECOMMENDED SCHEDULE{ph_warning}:
                         target_high = self.param_config[param]['high']
                         target_value = self.param_config[param]['target']
                     
-                    # Plot the data with good spacing
+                    # Clean, professional chart styling
+                    ax.set_facecolor('#f8fbff')  # Very light blue background for charts
+                    
+                    # Plot the data with professional ocean aesthetics
                     ax.plot(param_data['Date'], param_data['Value'], 
-                           marker='o', linewidth=2, markersize=4, label=param)
+                           color='#0f3460',  # Deep sea blue line
+                           linewidth=3, 
+                           markersize=6, 
+                           marker='o',
+                           markerfacecolor='#2980b9',  # Ocean blue markers
+                           markeredgecolor='#1e3d59',  # Deep navy edge
+                           markeredgewidth=2,
+                           alpha=0.9)
                     
-                    # Add target range shading
+                    # Add target range shading (clear and simple)
                     ax.axhspan(target_low, target_high, 
-                              color='green', alpha=0.1, label='Target Range')
+                              color='#27ae60', alpha=0.15, zorder=0)  # Light green safe zone
                     
-                    # Add target line
-                    ax.axhline(y=target_value, color='green', linestyle='--', alpha=0.7, label='Target')
+                    # Add target line (user can customize this in future)
+                    ax.axhline(y=target_value, color='#27ae60', linestyle='--', 
+                              linewidth=2, alpha=0.8)  # Green target line
                     
-                    # Formatting with smart unit display and compact spacing
-                    ax.set_title(f'{param} ({display_unit})', fontweight='bold', fontsize=12, pad=10)
-                    ax.set_ylabel(display_unit, fontsize=10)
-                    ax.grid(True, alpha=0.3)
-                    ax.legend(loc='upper right', fontsize=9)
+                    # Ocean-themed chart formatting with smaller, centered titles
+                    ax.set_title(f'{param} ({display_unit})', 
+                                fontweight='bold', fontsize=10, pad=10, color='#1e3d59',  # Reduced from 12 to 10
+                                ha='center')  # Explicitly center the title
+                    ax.set_ylabel(display_unit, fontsize=9, color='#1e3d59', fontweight='bold')  # Slightly smaller ylabel
                     
-                    # Format x-axis with proper spacing
-                    ax.tick_params(axis='x', rotation=45, labelsize=9)
-                    ax.tick_params(axis='y', labelsize=9)
+                    # Ocean-inspired grid
+                    ax.grid(True, alpha=0.3, color='#2980b9', linestyle='-', linewidth=0.5)
+                    ax.set_axisbelow(True)  # Grid behind data
                     
-                    # Ensure good spacing
+                    # Remove confusing legends - information moved to How to Use section
+                    # No legend needed as chart purpose is clear from title and data
+                    
+                    # Ocean-themed tick styling
+                    ax.tick_params(axis='x', rotation=45, labelsize=8, colors='#1e3d59')
+                    ax.tick_params(axis='y', labelsize=8, colors='#1e3d59')
+                    
+                    # Ocean color spines
+                    for spine in ax.spines.values():
+                        spine.set_color('#2980b9')
+                        spine.set_linewidth(1.5)
+                    
+                    # Ensure good spacing with ocean feel
                     ax.margins(y=0.1)
                     
                 else:
-                    # No data for this parameter
+                    # No data for this parameter - clean empty state
                     config = self.param_config[param]
-                    ax.text(0.5, 0.5, f'No {param} data available', 
+                    ax.set_facecolor('#f8fbff')  # Light blue background
+                    ax.text(0.5, 0.5, f'No {param} data available\nStart logging to see trends!', 
                            transform=ax.transAxes, ha='center', va='center',
-                           fontsize=11, style='italic')
-                    ax.set_title(f'{param} ({config["unit"]})', fontweight='bold', fontsize=12, pad=10)
-                    ax.set_ylabel(config["unit"], fontsize=10)
-                    ax.grid(True, alpha=0.3)
+                           fontsize=11, style='italic', color='#1e3d59',
+                           bbox=dict(boxstyle="round,pad=0.3", facecolor='#f0f8ff', alpha=0.8))
+                    ax.set_title(f'{param} ({config["unit"]})', 
+                                fontweight='bold', fontsize=10, pad=10, color='#1e3d59',  # Reduced size and better centering
+                                ha='center')  # Explicitly center
+                    ax.set_ylabel(config["unit"], fontsize=9, color='#1e3d59')  # Smaller ylabel
+                    ax.grid(True, alpha=0.3, color='#2980b9')
             
             # Embed in tkinter with proper sizing
             canvas = FigureCanvasTkAgg(fig, master=self.chart_frame)
@@ -1557,6 +2298,9 @@ RECOMMENDED SCHEDULE{ph_warning}:
             # Pack with proper padding
             chart_widget = canvas.get_tk_widget()
             chart_widget.pack(fill="both", expand=True, padx=5, pady=5)
+            
+            # Add custom optimal level controls below charts
+            self.add_custom_optimal_controls()
             
             # Update scroll region after adding charts and focus for mouse wheel
             self.chart_frame.update_idletasks()
@@ -1767,9 +2511,109 @@ RECOMMENDED SCHEDULE{ph_warning}:
             
         except Exception as e:
             pass  # Fail silently - no popup
+
+    def clear_all_data_with_confirmation(self):
+        """Clear all data with proper confirmation warning"""
+        from tkinter import messagebox
+        
+        # Multi-step confirmation to prevent accidental deletion
+        warning_message = (
+            "⚠️ WARNING: This will permanently delete ALL test data!\n\n"
+            "This action will:\n"
+            "• Delete all logged test results\n"
+            "• Clear the entire history database\n"
+            "• Reset all charts and trends\n\n"
+            "This CANNOT be undone!\n\n"
+            "Are you absolutely sure you want to continue?"
+        )
+        
+        # First confirmation
+        first_confirm = messagebox.askyesno(
+            "Clear All Data - Confirmation Required", 
+            warning_message,
+            icon="warning"
+        )
+        
+        if not first_confirm:
+            return
+        
+        # Second confirmation for extra safety
+        second_confirm = messagebox.askyesno(
+            "Final Confirmation", 
+            "This is your final chance to cancel.\n\n"
+            "Click YES to permanently delete all data.\n"
+            "Click NO to keep your data safe.",
+            icon="warning"
+        )
+        
+        if not second_confirm:
+            messagebox.showinfo("Cancelled", "Your data is safe. No changes were made.")
+            return
+        
+        # Perform the data deletion
+        try:
+            success = self.clear_all_data()
+            if success:
+                messagebox.showinfo(
+                    "Data Cleared", 
+                    "✅ All test data has been successfully deleted.\n\n"
+                    "The application now has a fresh start.\n"
+                    "You can begin logging new test results."
+                )
+                # Refresh the history display to show empty state
+                self.refresh_history_display()
+                # Also refresh trends to clear charts
+                self.draw_parameter_graphs()
+            else:
+                messagebox.showerror(
+                    "Error", 
+                    "❌ Could not delete all data.\n\n"
+                    "Some files may be in use.\n"
+                    "Please close the application and manually delete:\n"
+                    f"{self.db_path}"
+                )
+        except Exception as e:
+            messagebox.showerror(
+                "Error", 
+                f"❌ Error clearing data:\n{str(e)}\n\n"
+                "You may need to manually delete the database file."
+            )
+
+    def clear_all_data(self):
+        """Actually clear all data - internal method"""
+        try:
+            print("🗑️ Clearing all test data...")
+            
+            # Method 1: Try to drop the table (fastest)
+            try:
+                conn = sqlite3.connect(self.db_path)
+                cursor = conn.cursor()
+                cursor.execute('DROP TABLE IF EXISTS logs')
+                conn.commit()
+                conn.close()
+                print("✅ Database table dropped successfully")
+                
+                # Recreate the empty table
+                self.init_database()
+                return True
+                
+            except Exception as e:
+                print(f"Table drop failed: {e}, trying file deletion...")
+                
+                # Method 2: Delete the entire database file
+                if os.path.exists(self.db_path):
+                    os.remove(self.db_path)
+                    print("✅ Database file deleted successfully")
+                    
+                    # Recreate the database
+                    self.init_database()
+                    return True
+                    
+            return False
             
         except Exception as e:
-            messagebox.showerror("Error", f"Could not delete row:\n{str(e)}")
+            print(f"❌ Error clearing data: {e}")
+            return False
 
     def export_data_to_csv(self):
         """Export all data to CSV file"""
@@ -1780,12 +2624,12 @@ RECOMMENDED SCHEDULE{ph_warning}:
         try:
             from tkinter import filedialog
             
-            # Ask user where to save
+            # Ask user where to save - using correct Tkinter parameters
             filename = filedialog.asksaveasfilename(
                 title="Export Data to CSV",
                 defaultextension=".csv",
                 filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
-                initialname=f"reef_data_export_{datetime.now().strftime('%Y%m%d')}.csv"
+                initialfile=f"reef_data_export_{datetime.now().strftime('%Y%m%d')}.csv"  # Fixed: initialfile instead of initialname
             )
             
             if not filename:
@@ -1805,6 +2649,28 @@ RECOMMENDED SCHEDULE{ph_warning}:
             
         except Exception as e:
             messagebox.showerror("Export Error", f"Could not export data:\n{str(e)}")
+
+    def get_db_connection(self):
+        """Get database connection with proper resource management"""
+        return sqlite3.connect(self.db_path)
+    
+    def close_all_db_connections(self):
+        """Ensure all database connections are properly closed"""
+        try:
+            # Force close any remaining connections by creating and immediately closing one
+            conn = sqlite3.connect(self.db_path)
+            conn.close()
+            
+            # Also try to close any connection that might be lingering
+            import gc
+            for obj in gc.get_objects():
+                if isinstance(obj, sqlite3.Connection):
+                    try:
+                        obj.close()
+                    except:
+                        pass
+        except Exception as e:
+            print(f"Database connection cleanup warning: {e}")
 
     def init_database(self):
         """Initialize the SQLite database with proper schema"""
@@ -1829,19 +2695,70 @@ RECOMMENDED SCHEDULE{ph_warning}:
 
 
 def main():
-    """Main application entry point"""
-    root = tk.Tk()
-    app = ReeferMadness(root)
+    """Main application entry point with proper error handling and cleanup"""
+    app = None
+    root = None
     
-    # Center the window on screen
-    root.update_idletasks()
-    width = root.winfo_width()
-    height = root.winfo_height()
-    x = (root.winfo_screenwidth() // 2) - (width // 2)
-    y = (root.winfo_screenheight() // 2) - (height // 2)
-    root.geometry(f"{width}x{height}+{x}+{y}")
-    
-    root.mainloop()
+    try:
+        print("🚀 Starting ReeferMadness v0.26.0...")
+        
+        # Initialize Tkinter root
+        root = tk.Tk()
+        
+        # Initialize application
+        app = ReeferMadness(root)
+        
+        # Center the window on screen
+        root.update_idletasks()
+        width = root.winfo_width()
+        height = root.winfo_height()
+        x = (root.winfo_screenwidth() // 2) - (width // 2)
+        y = (root.winfo_screenheight() // 2) - (height // 2)
+        root.geometry(f"{width}x{height}+{x}+{y}")
+        
+        print("✅ Application initialized successfully")
+        
+        # Start the main event loop
+        root.mainloop()
+        
+    except KeyboardInterrupt:
+        print("🛑 Application interrupted by user")
+    except Exception as e:
+        print(f"💥 Fatal error during startup: {e}")
+        import traceback
+        traceback.print_exc()
+    finally:
+        # Ensure proper cleanup even if main loop crashes
+        print("🧹 Performing final cleanup...")
+        try:
+            if app:
+                # Close any remaining database connections
+                app.close_all_db_connections()
+                
+            # Close any Matplotlib figures
+            try:
+                import matplotlib.pyplot as plt
+                plt.close('all')
+            except:
+                pass
+                
+            if root:
+                try:
+                    root.quit()
+                    root.destroy()
+                except:
+                    pass
+                    
+            print("✅ Cleanup completed")
+        except:
+            pass
+        
+        # Force exit to prevent zombie processes
+        try:
+            import sys
+            sys.exit(0)
+        except:
+            pass
 
 
 if __name__ == "__main__":
